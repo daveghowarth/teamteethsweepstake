@@ -138,17 +138,45 @@ const tabs = [
 
 function App() {
   const [activeTab, setActiveTab] = React.useState("dashboard");
-  const [tournament, setTournament] = useLocalStorage(STORAGE_KEY, createDefaultTournament);
-  const isSweepstakeAdmin = window.location.pathname.includes("sweepstake-admin");
+  const isEditableSite = isLocalEditableSite();
+  const [localTournament, setLocalTournament] = useLocalStorage(STORAGE_KEY, createDefaultTournament);
+  const [publishedTournament, setPublishedTournament] = React.useState(() => createDefaultTournament());
+  const tournament = isEditableSite ? localTournament : publishedTournament;
+  const setTournament = isEditableSite ? setLocalTournament : setPublishedTournament;
+  const isSweepstakeAdmin = isEditableSite && window.location.pathname.includes("sweepstake-admin");
   const displayTournament = React.useMemo(
     () => addSweepstakeOwnersToTeams(applyOfficialTeamNames(tournament)),
     [tournament]
   );
 
   React.useEffect(() => {
+    if (isEditableSite) return undefined;
+
+    let isMounted = true;
+
+    fetch("/data/published-tournament.json")
+      .then((response) => (response.ok ? response.json() : createDefaultTournament()))
+      .then((publishedData) => {
+        if (isMounted) {
+          setPublishedTournament(publishedData);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setPublishedTournament(createDefaultTournament());
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isEditableSite]);
+
+  React.useEffect(() => {
+    if (!isEditableSite) return;
     if (!hasPlaceholderTeamNames(tournament)) return;
     setTournament((current) => applyOfficialTeamNames(current));
-  }, [setTournament, tournament]);
+  }, [isEditableSite, setTournament, tournament]);
 
   const groupTables = React.useMemo(
     () => calculateGroupTables(displayTournament),
@@ -200,12 +228,21 @@ function App() {
       <Hero />
       <main className="relative z-10 mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 lg:px-8">
         <aside className="hidden w-64 shrink-0 lg:block">
-          <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Navigation
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isEditableSite={isEditableSite}
+          />
         </aside>
 
         <section className="min-w-0 flex-1">
           <div className="mb-5 lg:hidden">
-            <Navigation activeTab={activeTab} setActiveTab={setActiveTab} compact />
+            <Navigation
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isEditableSite={isEditableSite}
+              compact
+            />
           </div>
 
           {activeTab === "dashboard" && (
@@ -224,7 +261,7 @@ function App() {
           {activeTab === "admin" && (
             <AdminScores tournament={displayTournament} updateFixtureScore={updateFixtureScore} />
           )}
-          {activeTab === "sweepstake" && <SweepstakePlaceholder />}
+          {activeTab === "sweepstake" && <SweepstakePlaceholder isEditableSite={isEditableSite} />}
           {activeTab === "settings" && (
             <SettingsData
               tournament={displayTournament}
@@ -252,10 +289,14 @@ function Hero() {
   );
 }
 
-function Navigation({ activeTab, setActiveTab, compact = false }) {
+function Navigation({ activeTab, setActiveTab, isEditableSite, compact = false }) {
+  const visibleTabs = isEditableSite
+    ? tabs
+    : tabs.filter((tab) => !["admin", "settings"].includes(tab.id));
+
   return (
     <nav className={compact ? "flex gap-2 overflow-x-auto pb-1" : "sticky top-4 space-y-2"}>
-      {tabs.map((tab) => {
+      {visibleTabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
         return (
@@ -1094,7 +1135,7 @@ function SettingsData({ tournament, setTournament, resetTournament }) {
   );
 }
 
-function SweepstakePlaceholder() {
+function SweepstakePlaceholder({ isEditableSite }) {
   return (
     <div className="space-y-6">
       <SectionTitle
@@ -1105,14 +1146,18 @@ function SweepstakePlaceholder() {
         <Trophy className="mx-auto text-cyan-200" size={42} />
         <h2 className="mt-4 text-2xl font-black text-white">Coming next</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/65">
-          Use the separate sweepstake admin page to enter player names, team picks, and photos.
+          {isEditableSite
+            ? "Use the separate sweepstake admin page to enter player names, team picks, and photos."
+            : "The draw details and player picks will appear here once the sweepstake is ready."}
         </p>
-        <a
-          className="mt-5 inline-flex rounded-lg bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-white"
-          href="/sweepstake-admin"
-        >
-          Open sweepstake admin
-        </a>
+        {isEditableSite && (
+          <a
+            className="mt-5 inline-flex rounded-lg bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-white"
+            href="/sweepstake-admin"
+          >
+            Open sweepstake admin
+          </a>
+        )}
       </div>
     </div>
   );
@@ -1578,6 +1623,10 @@ function TeamBadge({ team, fallbackFlag }) {
   }
 
   return <span aria-hidden="true">{fallbackFlag}</span>;
+}
+
+function isLocalEditableSite() {
+  return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 }
 
 function getTodayOrNextMatchDay(fixtures) {

@@ -353,3 +353,50 @@ To create a production build, run:
 ```bash
 npm run build
 ```
+
+## Deploy To Vercel
+
+This app is set up so the public Vercel site is read-only.
+
+On your own Mac at `http://localhost:5173`, you can still use the admin pages. On Vercel, the public site hides:
+
+```text
+Enter Scores
+Settings / Data
+Sweepstake admin
+```
+
+The public site reads its starter data from:
+
+```text
+public/data/published-tournament.json
+```
+
+To deploy:
+
+1. Push the latest code to GitHub.
+2. Go to Vercel and sign in with GitHub.
+3. Click **Add New > Project**.
+4. Import `teamteethsweepstake`.
+5. Use these settings:
+
+```text
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+6. Click **Deploy**.
+
+### Updating The Public Site Later
+
+Because the Vercel site is read-only, updates should be made by you and then pushed to GitHub.
+
+The simplest route is:
+
+1. Update the app data locally.
+2. Export a JSON backup from **Settings / Data**.
+3. Replace `public/data/published-tournament.json` with that exported JSON.
+4. Commit and push to GitHub.
+5. Vercel will redeploy automatically.
