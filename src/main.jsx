@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { createDefaultTournament } from "./data/defaultTournament";
+import { createOfficialFixtures } from "./data/officialFixtures.js";
 import {
   calculateDashboardStats,
   calculateGroupTables,
@@ -145,7 +146,7 @@ function App() {
   const setTournament = isEditableSite ? setLocalTournament : setPublishedTournament;
   const isSweepstakeAdmin = isEditableSite && window.location.pathname.includes("sweepstake-admin");
   const displayTournament = React.useMemo(
-    () => addSweepstakeOwnersToTeams(applyOfficialTeamNames(tournament)),
+    () => addSweepstakeOwnersToTeams(applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament))),
     [tournament]
   );
 
@@ -174,8 +175,8 @@ function App() {
 
   React.useEffect(() => {
     if (!isEditableSite) return;
-    if (!hasPlaceholderTeamNames(tournament)) return;
-    setTournament((current) => applyOfficialTeamNames(current));
+    if (!hasPlaceholderTeamNames(tournament) && !hasOutdatedFixtureSchedule(tournament)) return;
+    setTournament((current) => applyOfficialFixtureSchedule(applyOfficialTeamNames(current)));
   }, [isEditableSite, setTournament, tournament]);
 
   const groupTables = React.useMemo(
@@ -1177,7 +1178,7 @@ function SweepstakeAdmin({ tournament, setTournament }) {
       );
 
       return addSweepstakeOwnersToTeams({
-        ...applyOfficialTeamNames(current),
+        ...applyOfficialFixtureSchedule(applyOfficialTeamNames(current)),
         participants: nextParticipants,
         updatedAt: new Date().toISOString(),
       });
@@ -1981,6 +1982,50 @@ function applyOfficialTeamNames(tournament) {
       homeTeamName: teamNameById.get(fixture.homeTeamId) || fixture.homeTeamName,
       awayTeamName: teamNameById.get(fixture.awayTeamId) || fixture.awayTeamName,
     })),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function hasOutdatedFixtureSchedule(tournament) {
+  const firstFixture = tournament.fixtures?.[0];
+
+  return (
+    tournament.fixtures?.length !== 104 ||
+    firstFixture?.homeTeamName !== "Mexico" ||
+    firstFixture?.awayTeamName !== "South Africa" ||
+    firstFixture?.date !== "2026-06-11" ||
+    firstFixture?.kickoffUk !== "21:00"
+  );
+}
+
+function applyOfficialFixtureSchedule(tournament) {
+  if (!hasOutdatedFixtureSchedule(tournament)) return tournament;
+
+  const officialFixtures = createOfficialFixtures(tournament.teams);
+  const previousByMatchNumber = new Map(
+    (tournament.fixtures || []).map((fixture) => [fixture.matchNumber, fixture])
+  );
+
+  return {
+    ...tournament,
+    fixtures: officialFixtures.map((fixture) => {
+      const previousFixture = previousByMatchNumber.get(fixture.matchNumber);
+      const sameTeams =
+        previousFixture?.homeTeamId === fixture.homeTeamId &&
+        previousFixture?.awayTeamId === fixture.awayTeamId;
+
+      if (!sameTeams) return fixture;
+
+      return {
+        ...fixture,
+        homeScore: previousFixture.homeScore,
+        awayScore: previousFixture.awayScore,
+        homeYellowCards: previousFixture.homeYellowCards || 0,
+        homeRedCards: previousFixture.homeRedCards || 0,
+        awayYellowCards: previousFixture.awayYellowCards || 0,
+        awayRedCards: previousFixture.awayRedCards || 0,
+      };
+    }),
     updatedAt: new Date().toISOString(),
   };
 }

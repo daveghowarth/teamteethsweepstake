@@ -1,25 +1,6 @@
+import { createOfficialFixtures } from "./officialFixtures.js";
+
 const groups = "ABCDEFGHIJKL".split("");
-
-const hostCities = [
-  "Mexico City",
-  "Guadalajara",
-  "Monterrey",
-  "Toronto",
-  "Vancouver",
-  "Atlanta",
-  "Boston",
-  "Dallas",
-  "Houston",
-  "Kansas City",
-  "Los Angeles",
-  "Miami",
-  "New York/New Jersey",
-  "Philadelphia",
-  "San Francisco Bay Area",
-  "Seattle",
-];
-
-const kickoffTimesUk = ["17:00", "20:00"];
 
 const officialGroupTeams = {
   A: [
@@ -98,7 +79,7 @@ const officialGroupTeams = {
 
 export function createDefaultTournament() {
   const teams = createPlaceholderTeams();
-  const fixtures = [...createGroupFixtures(teams), ...createKnockoutFixtures()];
+  const fixtures = createOfficialFixtures(teams);
   const participants = createPlaceholderParticipants(teams);
 
   return {
@@ -208,79 +189,4 @@ function createPlaceholderParticipants(teams) {
       potBTeamId: potBTeam.id,
     };
   });
-}
-
-function createGroupFixtures(teams) {
-  const pairings = [
-    [0, 1],
-    [2, 3],
-    [0, 2],
-    [1, 3],
-    [0, 3],
-    [1, 2],
-  ];
-
-  let fixtureNumber = 1;
-
-  return groups.flatMap((group, groupIndex) => {
-    const groupTeams = teams.filter((team) => team.group === group);
-
-    return pairings.map(([homeIndex, awayIndex], roundIndex) => {
-      const homeTeam = groupTeams[homeIndex];
-      const awayTeam = groupTeams[awayIndex];
-
-      return {
-        id: `M${fixtureNumber++}`,
-        matchNumber: fixtureNumber - 1,
-        stage: "Group",
-        group,
-        date: addDays("2026-06-11", groupIndex * 2 + Math.floor(roundIndex / 2)),
-        kickoffUk: kickoffTimesUk[roundIndex % kickoffTimesUk.length],
-        venue: hostCities[(fixtureNumber + groupIndex) % hostCities.length],
-        homeTeamId: homeTeam.id,
-        awayTeamId: awayTeam.id,
-        homeTeamName: homeTeam.name,
-        awayTeamName: awayTeam.name,
-        homeScore: null,
-        awayScore: null,
-      };
-    });
-  });
-}
-
-function createKnockoutFixtures() {
-  const knockoutStages = [
-    { stage: "Round of 32", matches: 16, startDate: "2026-06-28" },
-    { stage: "Round of 16", matches: 8, startDate: "2026-07-04" },
-    { stage: "Quarter-final", matches: 4, startDate: "2026-07-09" },
-    { stage: "Semi-final", matches: 2, startDate: "2026-07-14" },
-    { stage: "Third-place play-off", matches: 1, startDate: "2026-07-18" },
-    { stage: "Final", matches: 1, startDate: "2026-07-19" },
-  ];
-
-  let matchNumber = 73;
-
-  return knockoutStages.flatMap(({ stage, matches, startDate }) =>
-    Array.from({ length: matches }, (_, index) => ({
-      id: `M${matchNumber}`,
-      matchNumber: matchNumber++,
-      stage,
-      group: null,
-      date: addDays(startDate, Math.floor(index / 2)),
-      kickoffUk: kickoffTimesUk[index % kickoffTimesUk.length],
-      venue: hostCities[(matchNumber + index) % hostCities.length],
-      homeTeamId: null,
-      awayTeamId: null,
-      homeTeamName: `${stage} team ${index + 1}A`,
-      awayTeamName: `${stage} team ${index + 1}B`,
-      homeScore: null,
-      awayScore: null,
-    }))
-  );
-}
-
-function addDays(dateText, daysToAdd) {
-  const date = new Date(`${dateText}T12:00:00`);
-  date.setDate(date.getDate() + daysToAdd);
-  return date.toISOString().slice(0, 10);
 }
