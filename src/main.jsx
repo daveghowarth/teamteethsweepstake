@@ -280,11 +280,19 @@ function Hero() {
   return (
     <header className="relative overflow-hidden border-b border-white/10 text-white">
       <div className="relative mx-auto max-w-7xl px-4 py-4 lg:px-8">
-        <img
-          className="w-full rounded-lg shadow-soft"
-          src="/images/banner3.png"
-          alt="Team Teeth and Friends World Cup Sweepstake 2026"
-        />
+        <picture>
+          <source media="(max-width: 700px)" srcSet="/images/banner3-mobile.jpg" />
+          <source media="(max-width: 1400px)" srcSet="/images/banner3-desktop.jpg" />
+          <img
+            className="w-full rounded-lg shadow-soft"
+            src="/images/banner3-desktop.jpg"
+            alt="Team Teeth and Friends World Cup Sweepstake 2026"
+            width="1400"
+            height="393"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </picture>
       </div>
     </header>
   );
