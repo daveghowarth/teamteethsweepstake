@@ -1,8 +1,8 @@
 {
   "name": "FIFA World Cup 2026",
   "version": 1,
-  "createdAt": "2026-05-31T22:20:26.848Z",
-  "updatedAt": "2026-05-31T22:20:26.849Z",
+  "createdAt": "2026-05-31T22:32:38.451Z",
+  "updatedAt": "2026-05-31T22:32:38.452Z",
   "groups": [
     "A",
     "B",
@@ -111,7 +111,7 @@
       "name": "Scotland",
       "group": "C",
       "seed": 4,
-      "flagEmoji": "🏴",
+      "flagEmoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -375,7 +375,7 @@
       "name": "England",
       "group": "L",
       "seed": 1,
-      "flagEmoji": "🏴",
+      "flagEmoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -2103,5 +2103,5 @@
       "potBTeamId": "H4"
     }
   ],
-  "publishedAt": "2026-05-31T22:20:26.849Z"
+  "publishedAt": "2026-05-31T22:32:38.453Z"
 }

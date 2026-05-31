@@ -42,7 +42,7 @@ const officialGroupTeams = {
     { name: "Brazil", flagEmoji: "🇧🇷" },
     { name: "Morocco", flagEmoji: "🇲🇦" },
     { name: "Haiti", flagEmoji: "🇭🇹" },
-    { name: "Scotland", flagEmoji: "🏴" },
+    { name: "Scotland", flagEmoji: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}" },
   ],
   D: [
     { name: "United States", flagEmoji: "🇺🇸" },
@@ -93,7 +93,7 @@ const officialGroupTeams = {
     { name: "DR Congo", flagEmoji: "🇨🇩" },
   ],
   L: [
-    { name: "England", flagEmoji: "🏴" },
+    { name: "England", flagEmoji: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}" },
     { name: "Croatia", flagEmoji: "🇭🇷" },
     { name: "Ghana", flagEmoji: "🇬🇭" },
     { name: "Panama", flagEmoji: "🇵🇦" },
@@ -175,7 +175,13 @@ function App() {
 
   React.useEffect(() => {
     if (!isEditableSite) return;
-    if (!hasPlaceholderTeamNames(tournament) && !hasOutdatedFixtureSchedule(tournament)) return;
+    if (
+      !hasPlaceholderTeamNames(tournament) &&
+      !hasOutdatedFixtureSchedule(tournament) &&
+      !hasOutdatedHomeNationFlags(tournament)
+    ) {
+      return;
+    }
     setTournament((current) => applyOfficialFixtureSchedule(applyOfficialTeamNames(current)));
   }, [isEditableSite, setTournament, tournament]);
 
@@ -920,8 +926,7 @@ function CompactTeam({ team }) {
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      <TeamBadge team={team} fallbackFlag={flag} />
-      <OwnerAvatar team={team} />
+      <TeamMarker team={team} fallbackFlag={flag} />
       <span>{team.name}</span>
     </span>
   );
@@ -1594,26 +1599,31 @@ function TeamName({ team, name, align = "left" }) {
         align === "right" ? "justify-end text-right" : "justify-start text-left"
       }`}
     >
-      <TeamBadge team={displayTeam} fallbackFlag={flag} />
-      <OwnerAvatar team={displayTeam} />
+      <TeamMarker team={displayTeam} fallbackFlag={flag} />
       <span>{displayTeam.name || name}</span>
       <span className="font-semibold text-white/48">({displayTeam.sweepstakeOwner || "Not drawn yet"})</span>
     </span>
   );
 }
 
-function OwnerAvatar({ team }) {
-  if (!team?.sweepstakeOwnerAvatarUrl) return null;
+function TeamMarker({ team, fallbackFlag }) {
+  if (team?.sweepstakeOwnerAvatarUrl) {
+    return (
+      <span className="team-owner-marker" title={team.sweepstakeOwner}>
+        <img
+          className="team-owner-marker-avatar"
+          src={team.sweepstakeOwnerAvatarUrl}
+          alt=""
+          loading="lazy"
+        />
+        <span className="team-owner-marker-flag" aria-hidden="true">
+          {fallbackFlag}
+        </span>
+      </span>
+    );
+  }
 
-  return (
-    <img
-      className="owner-avatar"
-      src={team.sweepstakeOwnerAvatarUrl}
-      alt=""
-      loading="lazy"
-      title={team.sweepstakeOwner}
-    />
-  );
+  return <TeamBadge team={team} fallbackFlag={fallbackFlag} />;
 }
 
 function TeamBadge({ team, fallbackFlag }) {
@@ -1964,7 +1974,7 @@ function applyOfficialTeamNames(tournament) {
 
     const shouldRename = /^Group [A-L] Team [1-4]$/.test(team.name || "");
     const nextName = shouldRename ? officialTeam.name : team.name;
-    const nextFlag = team.flagEmoji || officialTeam.flagEmoji;
+    const nextFlag = officialTeam.flagEmoji;
 
     if (nextName === team.name && nextFlag === team.flagEmoji) {
       return team;
@@ -2004,6 +2014,13 @@ function hasOutdatedFixtureSchedule(tournament) {
     firstFixture?.date !== "2026-06-11" ||
     firstFixture?.kickoffUk !== "21:00"
   );
+}
+
+function hasOutdatedHomeNationFlags(tournament) {
+  return tournament.teams.some((team) => {
+    const officialTeam = officialGroupTeams[team.group]?.[Number(team.seed) - 1];
+    return officialTeam && team.flagEmoji !== officialTeam.flagEmoji;
+  });
 }
 
 function applyOfficialFixtureSchedule(tournament) {
@@ -2727,7 +2744,7 @@ function getFlagEmojiFromCountryCode(countryCode = "") {
     CZE: "CZ",
     ECU: "EC",
     EGY: "EG",
-    ENG: "GB",
+    ENG: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
     FRA: "FR",
     GER: "DE",
     GHA: "GH",
@@ -2748,7 +2765,7 @@ function getFlagEmojiFromCountryCode(countryCode = "") {
     QAT: "QA",
     RSA: "ZA",
     KSA: "SA",
-    SCO: "GB",
+    SCO: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
     SEN: "SN",
     ESP: "ES",
     SUI: "CH",
@@ -2761,6 +2778,8 @@ function getFlagEmojiFromCountryCode(countryCode = "") {
     UZB: "UZ",
   };
   const iso2 = fifaCountryToIso2[countryCode] || countryCode;
+
+  if (iso2.startsWith("\u{1F3F4}")) return iso2;
 
   if (!/^[A-Z]{2}$/.test(iso2)) return "";
 

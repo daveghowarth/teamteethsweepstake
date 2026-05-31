@@ -19,7 +19,7 @@ const officialGroupTeams = {
     { name: "Brazil", flagEmoji: "🇧🇷" },
     { name: "Morocco", flagEmoji: "🇲🇦" },
     { name: "Haiti", flagEmoji: "🇭🇹" },
-    { name: "Scotland", flagEmoji: "🏴" },
+    { name: "Scotland", flagEmoji: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}" },
   ],
   D: [
     { name: "United States", flagEmoji: "🇺🇸" },
@@ -70,7 +70,7 @@ const officialGroupTeams = {
     { name: "DR Congo", flagEmoji: "🇨🇩" },
   ],
   L: [
-    { name: "England", flagEmoji: "🏴" },
+    { name: "England", flagEmoji: "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}" },
     { name: "Croatia", flagEmoji: "🇭🇷" },
     { name: "Ghana", flagEmoji: "🇬🇭" },
     { name: "Panama", flagEmoji: "🇵🇦" },
