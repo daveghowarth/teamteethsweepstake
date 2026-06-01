@@ -139,31 +139,38 @@ const tabs = [
 
 function App() {
   const [activeTab, setActiveTab] = React.useState("dashboard");
-  const isEditableSite = isLocalEditableSite();
+  const isLocalSite = isLocalEditableSite();
+  const isSweepstakeAdmin = window.location.pathname.includes("sweepstake-admin");
+  const isEditableSite = isLocalSite || isSweepstakeAdmin;
+  const hasSavedLocalTournament = React.useRef(window.localStorage.getItem(STORAGE_KEY) !== null);
   const [localTournament, setLocalTournament] = useLocalStorage(STORAGE_KEY, createDefaultTournament);
   const [publishedTournament, setPublishedTournament] = React.useState(() => createDefaultTournament());
   const tournament = isEditableSite ? localTournament : publishedTournament;
   const setTournament = isEditableSite ? setLocalTournament : setPublishedTournament;
-  const isSweepstakeAdmin = isEditableSite && window.location.pathname.includes("sweepstake-admin");
   const displayTournament = React.useMemo(
     () => addSweepstakeOwnersToTeams(applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament))),
     [tournament]
   );
 
   React.useEffect(() => {
-    if (isEditableSite) return undefined;
+    if (isEditableSite && (isLocalSite || hasSavedLocalTournament.current)) return undefined;
 
     let isMounted = true;
 
     fetch("/data/published-tournament.json")
       .then((response) => (response.ok ? response.json() : createDefaultTournament()))
       .then((publishedData) => {
-        if (isMounted) {
+        if (!isMounted) return;
+
+        if (isEditableSite) {
+          setLocalTournament(publishedData);
+          hasSavedLocalTournament.current = true;
+        } else {
           setPublishedTournament(publishedData);
         }
       })
       .catch(() => {
-        if (isMounted) {
+        if (isMounted && !isEditableSite) {
           setPublishedTournament(createDefaultTournament());
         }
       });
@@ -171,7 +178,7 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, [isEditableSite]);
+  }, [isEditableSite, isLocalSite, setLocalTournament]);
 
   React.useEffect(() => {
     if (!isEditableSite) return;
@@ -224,7 +231,11 @@ function App() {
       <div className="app-shell min-h-screen text-white">
         <Hero />
         <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
-          <SweepstakeAdmin tournament={displayTournament} setTournament={setTournament} />
+          <SweepstakeAdmin
+            tournament={displayTournament}
+            setTournament={setTournament}
+            isLocalSite={isLocalSite}
+          />
         </main>
       </div>
     );
@@ -1177,7 +1188,7 @@ function SweepstakePlaceholder({ isEditableSite }) {
   );
 }
 
-function SweepstakeAdmin({ tournament, setTournament }) {
+function SweepstakeAdmin({ tournament, setTournament, isLocalSite }) {
   const csvInputRef = React.useRef(null);
   const participants = getParticipants(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
@@ -1283,6 +1294,14 @@ function SweepstakeAdmin({ tournament, setTournament }) {
         <StatCard label="Pot A picks" value={`${participants.filter((player) => player.potATeamId).length} / ${PLAYER_COUNT}`} />
         <StatCard label="Pot B picks" value={`${participants.filter((player) => player.potBTeamId).length} / ${PLAYER_COUNT}`} />
       </div>
+
+      {!isLocalSite && (
+        <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4 text-sm font-semibold leading-6 text-amber-100">
+          This online admin page saves changes in this browser. It is useful when you are away
+          from your laptop, but it does not update the public site for everyone until we connect a
+          shared database or publish a new data file.
+        </div>
+      )}
 
       <Panel title="Google Sheets import">
         <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
