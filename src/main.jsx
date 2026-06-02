@@ -247,18 +247,28 @@ function App() {
   }
 
   function updateFixtureStats(fixtureId, stats) {
+    const normalisedStats = Object.fromEntries(
+      Object.entries(stats).map(([key, value]) => [
+        key,
+        value === "" ? 0 : Number(value),
+      ])
+    );
+
+    if (Object.hasOwn(normalisedStats, "homePenaltiesWon")) {
+      normalisedStats.awayPenaltiesConceded = normalisedStats.homePenaltiesWon;
+    }
+
+    if (Object.hasOwn(normalisedStats, "awayPenaltiesWon")) {
+      normalisedStats.homePenaltiesConceded = normalisedStats.awayPenaltiesWon;
+    }
+
     setTournament((current) => ({
       ...current,
       fixtures: current.fixtures.map((fixture) =>
         fixture.id === fixtureId
           ? {
               ...fixture,
-              ...Object.fromEntries(
-                Object.entries(stats).map(([key, value]) => [
-                  key,
-                  value === "" ? 0 : Number(value),
-                ])
-              ),
+              ...normalisedStats,
             }
           : fixture
       ),
@@ -560,7 +570,8 @@ function AdminScores({ tournament, updateFixtureScore, updateFixtureStats }) {
       {adminView === "match-stats" && (
         <div className="space-y-3">
           <div className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm font-semibold text-cyan-50">
-            Enter normal-time and extra-time penalties only. Do not include penalty shootouts.
+            Enter penalties won, yellows, and reds for each team. Penalties conceded are calculated
+            automatically from the other team's penalties won. Do not include penalty shootouts.
             Yellow cards count as 1 point and red cards count as 2 points for Prize 6.
           </div>
           {allFixtures.map((fixture) => (
@@ -1093,13 +1104,11 @@ function ScoreInputCard({ fixture, updateFixtureScore }) {
 function MatchStatsInputCard({ fixture, updateFixtureStats }) {
   const homeFields = [
     ["homePenaltiesWon", "Pens won", fixture.homePenaltiesWon],
-    ["homePenaltiesConceded", "Pens conceded", fixture.homePenaltiesConceded],
     ["homeYellowCards", "Yellows", fixture.homeYellowCards],
     ["homeRedCards", "Reds", fixture.homeRedCards],
   ];
   const awayFields = [
     ["awayPenaltiesWon", "Pens won", fixture.awayPenaltiesWon],
-    ["awayPenaltiesConceded", "Pens conceded", fixture.awayPenaltiesConceded],
     ["awayYellowCards", "Yellows", fixture.awayYellowCards],
     ["awayRedCards", "Reds", fixture.awayRedCards],
   ];
@@ -1125,12 +1134,14 @@ function MatchStatsInputCard({ fixture, updateFixtureStats }) {
         <TeamStatsInputs
           teamName={fixture.homeTeamName}
           fields={homeFields}
+          penaltiesConceded={fixture.homePenaltiesConceded}
           fixtureId={fixture.id}
           updateFixtureStats={updateFixtureStats}
         />
         <TeamStatsInputs
           teamName={fixture.awayTeamName}
           fields={awayFields}
+          penaltiesConceded={fixture.awayPenaltiesConceded}
           fixtureId={fixture.id}
           updateFixtureStats={updateFixtureStats}
         />
@@ -1139,11 +1150,11 @@ function MatchStatsInputCard({ fixture, updateFixtureStats }) {
   );
 }
 
-function TeamStatsInputs({ teamName, fields, fixtureId, updateFixtureStats }) {
+function TeamStatsInputs({ teamName, fields, penaltiesConceded, fixtureId, updateFixtureStats }) {
   return (
     <div className="rounded-lg border border-white/10 bg-slate-950/35 p-3">
       <p className="mb-3 truncate text-sm font-black text-white">{teamName}</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-3">
         {fields.map(([key, label, value]) => (
           <label key={key} className="text-xs font-semibold text-white/65">
             <span className="block text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100/45">
@@ -1160,6 +1171,9 @@ function TeamStatsInputs({ teamName, fields, fixtureId, updateFixtureStats }) {
           </label>
         ))}
       </div>
+      <p className="mt-3 text-xs font-semibold text-white/45">
+        Pens conceded auto-calculated: {penaltiesConceded || 0}
+      </p>
     </div>
   );
 }
