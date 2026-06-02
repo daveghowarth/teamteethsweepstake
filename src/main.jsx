@@ -282,6 +282,8 @@ function App() {
           <SweepstakeAdmin
             tournament={displayTournament}
             setTournament={setTournament}
+            updateFixtureScore={updateFixtureScore}
+            updateFixtureStats={updateFixtureStats}
             isLocalSite={isLocalSite}
             isOnlineAdmin={!isLocalSite}
           />
@@ -1366,8 +1368,16 @@ function SweepstakePlaceholder({ isEditableSite }) {
   );
 }
 
-function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin }) {
+function SweepstakeAdmin({
+  tournament,
+  setTournament,
+  updateFixtureScore,
+  updateFixtureStats,
+  isLocalSite,
+  isOnlineAdmin,
+}) {
   const csvInputRef = React.useRef(null);
+  const [adminSection, setAdminSection] = React.useState("players");
   const [adminPassword, setAdminPassword] = React.useState("");
   const [liveStatus, setLiveStatus] = React.useState(null);
   const participants = getParticipants(tournament);
@@ -1505,7 +1515,7 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
       <div className="flex flex-wrap items-start justify-between gap-4">
         <SectionTitle
           title="Sweepstake admin"
-          subtitle="Add 24 players, choose their Pot A and Pot B teams, and upload player photos."
+          subtitle="Manage players, picks, photos, scores, penalties, and cards."
         />
         <a
           className="rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/20"
@@ -1515,10 +1525,24 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
         </a>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Players named" value={`${completedPlayers} / ${PLAYER_COUNT}`} />
-        <StatCard label="Pot A picks" value={`${participants.filter((player) => player.potATeamId).length} / ${PLAYER_COUNT}`} />
-        <StatCard label="Pot B picks" value={`${participants.filter((player) => player.potBTeamId).length} / ${PLAYER_COUNT}`} />
+      <div className="glass-card flex flex-wrap gap-2 rounded-lg p-2 shadow-sm">
+        {[
+          ["players", "Players & picks"],
+          ["scores", "Scores, penalties & cards"],
+        ].map(([sectionId, label]) => (
+          <button
+            key={sectionId}
+            type="button"
+            onClick={() => setAdminSection(sectionId)}
+            className={`rounded-md px-4 py-2 text-sm font-black transition ${
+              adminSection === sectionId
+                ? "bg-cyan-300 text-slate-950"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {isOnlineAdmin && (
@@ -1563,99 +1587,117 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
         </Panel>
       )}
 
-      <Panel title="Google Sheets import">
-        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-          <p className="text-sm leading-6 text-white/65">
-            Download the CSV template, open it in Google Sheets, fill in the player names and team
-            names, then download it from Sheets as CSV and import it here. The template includes
-            the Pot A and Pot B country lists, supports avatar file names, and rejects duplicate
-            countries.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-white"
-              onClick={exportPlayersCsv}
-            >
-              Download CSV template
-            </button>
-            <button
-              type="button"
-              className="rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/20"
-              onClick={() => csvInputRef.current?.click()}
-            >
-              Import completed CSV
-            </button>
+      {adminSection === "players" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard label="Players named" value={`${completedPlayers} / ${PLAYER_COUNT}`} />
+            <StatCard label="Pot A picks" value={`${participants.filter((player) => player.potATeamId).length} / ${PLAYER_COUNT}`} />
+            <StatCard label="Pot B picks" value={`${participants.filter((player) => player.potBTeamId).length} / ${PLAYER_COUNT}`} />
           </div>
-        </div>
-        <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={importPlayersCsv} />
-      </Panel>
 
-      <Panel title="Player setup">
-        <div className="grid gap-4 lg:grid-cols-2">
-          {participants.map((participant, index) => (
-            <div key={participant.id} className="glass-card rounded-lg p-4">
-              <div className="flex items-start gap-4">
-                <PlayerAvatar participant={participant} size="large" />
-                <div className="min-w-0 flex-1">
-                  <label className="admin-label" htmlFor={`${participant.id}-name`}>
-                    Player {index + 1}
-                  </label>
-                  <input
-                    id={`${participant.id}-name`}
-                    className="admin-input"
-                    type="text"
-                    value={participant.name}
-                    placeholder={`Player ${index + 1} name`}
-                    onChange={(event) =>
-                      updateParticipant(participant.id, { name: event.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <TeamSelect
-                  label="Pot A team"
-                  value={participant.potATeamId}
-                  teams={potATeams}
-                  unavailableTeamIds={selectedTeamIds}
-                  onChange={(value) => updateParticipant(participant.id, { potATeamId: value })}
-                />
-                <TeamSelect
-                  label="Pot B team"
-                  value={participant.potBTeamId}
-                  teams={potBTeams}
-                  unavailableTeamIds={selectedTeamIds}
-                  onChange={(value) => updateParticipant(participant.id, { potBTeamId: value })}
-                />
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-cyan-300 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-white">
-                  <ImagePlus size={16} />
-                  Upload photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) => uploadAvatar(participant.id, event.target.files?.[0])}
-                  />
-                </label>
-                {participant.avatarUrl && (
-                  <button
-                    type="button"
-                    className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black text-white transition hover:bg-white/20"
-                    onClick={() => clearAvatar(participant.id)}
-                  >
-                    Remove photo
-                  </button>
-                )}
+          <Panel title="Google Sheets import">
+            <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+              <p className="text-sm leading-6 text-white/65">
+                Download the CSV template, open it in Google Sheets, fill in the player names and team
+                names, then download it from Sheets as CSV and import it here. The template includes
+                the Pot A and Pot B country lists, supports avatar file names, and rejects duplicate
+                countries.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-white"
+                  onClick={exportPlayersCsv}
+                >
+                  Download CSV template
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-white/10 px-4 py-2 text-sm font-black text-white transition hover:bg-white/20"
+                  onClick={() => csvInputRef.current?.click()}
+                >
+                  Import completed CSV
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      </Panel>
+            <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={importPlayersCsv} />
+          </Panel>
+
+          <Panel title="Player setup">
+            <div className="grid gap-4 lg:grid-cols-2">
+              {participants.map((participant, index) => (
+                <div key={participant.id} className="glass-card rounded-lg p-4">
+                  <div className="flex items-start gap-4">
+                    <PlayerAvatar participant={participant} size="large" />
+                    <div className="min-w-0 flex-1">
+                      <label className="admin-label" htmlFor={`${participant.id}-name`}>
+                        Player {index + 1}
+                      </label>
+                      <input
+                        id={`${participant.id}-name`}
+                        className="admin-input"
+                        type="text"
+                        value={participant.name}
+                        placeholder={`Player ${index + 1} name`}
+                        onChange={(event) =>
+                          updateParticipant(participant.id, { name: event.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <TeamSelect
+                      label="Pot A team"
+                      value={participant.potATeamId}
+                      teams={potATeams}
+                      unavailableTeamIds={selectedTeamIds}
+                      onChange={(value) => updateParticipant(participant.id, { potATeamId: value })}
+                    />
+                    <TeamSelect
+                      label="Pot B team"
+                      value={participant.potBTeamId}
+                      teams={potBTeams}
+                      unavailableTeamIds={selectedTeamIds}
+                      onChange={(value) => updateParticipant(participant.id, { potBTeamId: value })}
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-cyan-300 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-white">
+                      <ImagePlus size={16} />
+                      Upload photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(event) => uploadAvatar(participant.id, event.target.files?.[0])}
+                      />
+                    </label>
+                    {participant.avatarUrl && (
+                      <button
+                        type="button"
+                        className="rounded-lg bg-white/10 px-3 py-2 text-sm font-black text-white transition hover:bg-white/20"
+                        onClick={() => clearAvatar(participant.id)}
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </>
+      )}
+
+      {adminSection === "scores" && (
+        <AdminScores
+          tournament={tournament}
+          updateFixtureScore={updateFixtureScore}
+          updateFixtureStats={updateFixtureStats}
+        />
+      )}
     </div>
   );
 }
