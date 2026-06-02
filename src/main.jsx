@@ -153,25 +153,31 @@ function App() {
   );
 
   React.useEffect(() => {
-    if (isEditableSite && (isLocalSite || hasSavedLocalTournament.current)) return undefined;
+    if (isLocalSite) return undefined;
 
     let isMounted = true;
 
-    fetch("/data/published-tournament.json")
-      .then((response) => (response.ok ? response.json() : createDefaultTournament()))
-      .then((publishedData) => {
+    loadLiveTournamentData()
+      .then((liveData) => {
         if (!isMounted) return;
 
         if (isEditableSite) {
-          setLocalTournament(publishedData);
+          setLocalTournament(liveData);
           hasSavedLocalTournament.current = true;
         } else {
-          setPublishedTournament(publishedData);
+          setPublishedTournament(liveData);
         }
       })
-      .catch(() => {
-        if (isMounted && !isEditableSite) {
-          setPublishedTournament(createDefaultTournament());
+      .catch(async () => {
+        const fallbackData = await loadPublishedJsonFallback();
+
+        if (!isMounted) return;
+
+        if (isEditableSite) {
+          setLocalTournament(fallbackData);
+          hasSavedLocalTournament.current = true;
+        } else {
+          setPublishedTournament(fallbackData);
         }
       });
 
@@ -235,6 +241,7 @@ function App() {
             tournament={displayTournament}
             setTournament={setTournament}
             isLocalSite={isLocalSite}
+            isOnlineAdmin={!isLocalSite}
           />
         </main>
       </div>
@@ -1188,8 +1195,10 @@ function SweepstakePlaceholder({ isEditableSite }) {
   );
 }
 
-function SweepstakeAdmin({ tournament, setTournament, isLocalSite }) {
+function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin }) {
   const csvInputRef = React.useRef(null);
+  const [adminPassword, setAdminPassword] = React.useState("");
+  const [liveStatus, setLiveStatus] = React.useState(null);
   const participants = getParticipants(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
   const potBTeams = getPotTeams(tournament.teams, "B");
@@ -1254,7 +1263,7 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite }) {
 
         setTournament((current) =>
           addSweepstakeOwnersToTeams({
-            ...applyOfficialTeamNames(current),
+            ...applyOfficialFixtureSchedule(applyOfficialTeamNames(current)),
             participants: importedParticipants,
             updatedAt: new Date().toISOString(),
           })
@@ -1272,6 +1281,25 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite }) {
       }
     };
     reader.readAsText(file);
+  }
+
+  async function saveLiveTournament() {
+    if (!adminPassword.trim()) {
+      setLiveStatus({ type: "error", message: "Enter the admin password before saving live." });
+      return;
+    }
+
+    setLiveStatus({ type: "loading", message: "Saving live site..." });
+
+    try {
+      await saveLiveTournamentData(tournament, adminPassword);
+      setLiveStatus({ type: "success", message: "Saved. The public site now uses this data." });
+    } catch (error) {
+      setLiveStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Could not save live data.",
+      });
+    }
   }
 
   return (
@@ -1295,12 +1323,46 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite }) {
         <StatCard label="Pot B picks" value={`${participants.filter((player) => player.potBTeamId).length} / ${PLAYER_COUNT}`} />
       </div>
 
-      {!isLocalSite && (
-        <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4 text-sm font-semibold leading-6 text-amber-100">
-          This online admin page saves changes in this browser. It is useful when you are away
-          from your laptop, but it does not update the public site for everyone until we connect a
-          shared database or publish a new data file.
-        </div>
+      {isOnlineAdmin && (
+        <Panel title="Live site publishing">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+            <label className="block">
+              <span className="admin-label">Admin password</span>
+              <input
+                className="admin-input"
+                type="password"
+                value={adminPassword}
+                placeholder="Enter the password saved in Vercel"
+                onChange={(event) => setAdminPassword(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="rounded-lg bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={saveLiveTournament}
+              disabled={liveStatus?.type === "loading"}
+            >
+              {liveStatus?.type === "loading" ? "Saving..." : "Save live site"}
+            </button>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-white/65">
+            Make your changes below, then press Save live site. The public site will then load the
+            updated players, picks, photos, fixtures, and scores from Supabase.
+          </p>
+          {liveStatus && (
+            <div
+              className={`mt-4 rounded-lg border p-4 text-sm font-semibold ${
+                liveStatus.type === "success"
+                  ? "border-green-300/30 bg-green-300/10 text-green-100"
+                  : liveStatus.type === "error"
+                    ? "border-red-300/30 bg-red-300/10 text-red-100"
+                    : "border-white/12 bg-white/10 text-white/80"
+              }`}
+            >
+              {liveStatus.message}
+            </div>
+          )}
+        </Panel>
       )}
 
       <Panel title="Google Sheets import">
@@ -1665,6 +1727,49 @@ function TeamBadge({ team, fallbackFlag }) {
 
 function isLocalEditableSite() {
   return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+}
+
+async function loadLiveTournamentData() {
+  const response = await fetch("/api/tournament");
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Could not load live tournament data.");
+  }
+
+  if (!payload.data?.teams || !payload.data?.fixtures) {
+    throw new Error("Live tournament data has not been set up yet.");
+  }
+
+  return payload.data;
+}
+
+async function loadPublishedJsonFallback() {
+  const response = await fetch("/data/published-tournament.json");
+
+  if (!response.ok) {
+    return createDefaultTournament();
+  }
+
+  return response.json();
+}
+
+async function saveLiveTournamentData(tournament, adminPassword) {
+  const response = await fetch("/api/tournament", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-password": adminPassword,
+    },
+    body: JSON.stringify({ data: tournament }),
+  });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "Could not save live tournament data.");
+  }
+
+  return payload.data;
 }
 
 function getTodayOrNextMatchDay(fixtures) {

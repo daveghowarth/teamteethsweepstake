@@ -356,17 +356,26 @@ npm run build
 
 ## Deploy To Vercel
 
-This app is set up so the public Vercel site is read-only.
+The public site runs on Vercel. The admin page can also run online at:
 
-On your own Mac at `http://localhost:5173`, you can still use the admin pages. On Vercel, the public site hides:
+```text
+https://your-vercel-url/sweepstake-admin
+```
+
+On the public navigation, the site still hides:
 
 ```text
 Enter Scores
 Settings / Data
-Sweepstake admin
 ```
 
-The public site reads its starter data from:
+The public site first tries to load live data from:
+
+```text
+/api/tournament
+```
+
+If live data is not available yet, it falls back to:
 
 ```text
 public/data/published-tournament.json
@@ -389,11 +398,53 @@ Install Command: npm install
 
 6. Click **Deploy**.
 
+## Supabase Live Data Setup
+
+To make online admin changes update the real public site, create a Supabase project and run the SQL in:
+
+```text
+supabase/schema.sql
+```
+
+In Supabase:
+
+1. Open your project.
+2. Go to **SQL Editor**.
+3. Paste the contents of `supabase/schema.sql`.
+4. Click **Run**.
+
+Then find these values in Supabase:
+
+```text
+Project URL
+Service role key
+```
+
+Add these environment variables in Vercel:
+
+```text
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+ADMIN_PASSWORD=choose_a_private_password
+```
+
+Do not put the service role key in React code, GitHub, or `.env.example`.
+
+After adding environment variables, redeploy the Vercel project.
+
+Then visit:
+
+```text
+https://your-vercel-url/sweepstake-admin
+```
+
+Make edits, enter the admin password, and click **Save live site**.
+
 ### Updating The Public Site Later
 
-Because the Vercel site is read-only, updates should be made by you and then pushed to GitHub.
+With Supabase connected, use the online admin page and click **Save live site**.
 
-The simplest route is:
+The older fallback route still works:
 
 1. Update the app data locally.
 2. Export a JSON backup from **Settings / Data**.
