@@ -14,6 +14,7 @@ import {
 import "./styles.css";
 import { createDefaultTournament } from "./data/defaultTournament";
 import { createOfficialFixtures } from "./data/officialFixtures.js";
+import { getTeamSweepstakePot, getTeamSweepstakePotRank } from "./data/sweepstakePots.js";
 import { getTeamFlagUrl } from "./data/teamFlags.js";
 import {
   calculateDashboardStats,
@@ -1972,18 +1973,9 @@ function resizeAvatarFile(file) {
 
 function getPotTeams(teams, pot) {
   const groupStageTeams = getGroupStageTeams(teams);
-
-  const assignedPotTeams = groupStageTeams.filter((team) => team.sweepstakePot === pot);
-
-  if (assignedPotTeams.length > 0) {
-    return sortTeamsForPicker(assignedPotTeams);
-  }
-
-  const midpoint = PLAYER_COUNT;
-  const sortedTeams = sortTeamsForPicker(groupStageTeams);
-  const potTeams = pot === "A" ? sortedTeams.slice(0, midpoint) : sortedTeams.slice(midpoint);
-
-  return potTeams;
+  return sortTeamsForPicker(
+    groupStageTeams.filter((team) => getTeamSweepstakePot(team.name) === pot)
+  );
 }
 
 function getGroupStageTeams(teams) {
@@ -1993,24 +1985,16 @@ function getGroupStageTeams(teams) {
 }
 
 function applySweepstakePotAssignments(teams, participants) {
-  const potByTeamId = new Map();
-
-  for (const participant of participants) {
-    if (participant.potATeamId) potByTeamId.set(participant.potATeamId, "A");
-    if (participant.potBTeamId) potByTeamId.set(participant.potBTeamId, "B");
-  }
-
   return teams.map((team) => ({
     ...team,
-    sweepstakePot: potByTeamId.get(team.id) || team.sweepstakePot || null,
+    sweepstakePot: getTeamSweepstakePot(team.name),
   }));
 }
 
 function sortTeamsForPicker(teams) {
   return [...teams].sort((teamA, teamB) =>
-    `${teamA.group}-${teamA.seed || 99}-${teamA.name}`.localeCompare(
-      `${teamB.group}-${teamB.seed || 99}-${teamB.name}`
-    )
+    getTeamSweepstakePotRank(teamA.name) - getTeamSweepstakePotRank(teamB.name) ||
+    teamA.name.localeCompare(teamB.name)
   );
 }
 
@@ -2106,6 +2090,8 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
   const existingParticipants = getParticipants(tournament);
   const teams = applyOfficialTeamNames(tournament).teams;
   const groupStageTeams = getGroupStageTeams(teams);
+  const potATeams = getPotTeams(teams, "A");
+  const potBTeams = getPotTeams(teams, "B");
   const importedRows = rows.slice(1, PLAYER_COUNT + 1);
   const usedPotATeamIds = new Set();
   const usedPotBTeamIds = new Set();
@@ -2123,6 +2109,8 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
           ? existingParticipant.avatarUrl || ""
           : getAvatarUrlFromCsvValue(row[avatarIndex], existingParticipant.avatarUrl);
 
+      assertTeamBelongsToPot(potATeamId, potATeams, playerLabel, "Pot A");
+      assertTeamBelongsToPot(potBTeamId, potBTeams, playerLabel, "Pot B");
       assertUniqueCsvPick(potATeamId, usedPotATeamIds, playerLabel, "Pot A", groupStageTeams);
       assertUniqueCsvPick(potBTeamId, usedPotBTeamIds, playerLabel, "Pot B", groupStageTeams);
       assertUniqueCsvPick(potATeamId, usedTeamIds, playerLabel, "the draw", groupStageTeams);
@@ -2165,12 +2153,20 @@ function assertUniqueCsvPick(teamId, usedTeamIds, playerLabel, potLabel, teams) 
   usedTeamIds.add(teamId);
 }
 
+function assertTeamBelongsToPot(teamId, potTeams, playerLabel, potLabel) {
+  if (!teamId) return;
+
+  if (!potTeams.some((team) => team.id === teamId)) {
+    throw new Error(`${playerLabel}'s ${potLabel} team is not in ${potLabel}.`);
+  }
+}
+
 function normaliseHeader(header) {
   return header.trim().toLowerCase().replaceAll(" ", "_");
 }
 
 function findTeamIdFromCsvValue(value, teams, potLabel = "this pot") {
-  const cleanedValue = normaliseTeamSearchValue(value);
+  const cleanedValue = normaliseCsvTeamAlias(normaliseTeamSearchValue(value));
   if (!cleanedValue) return "";
 
   const exactTeam = teams.find(
@@ -2194,9 +2190,27 @@ function findTeamIdFromCsvValue(value, teams, potLabel = "this pot") {
 function normaliseTeamSearchValue(value = "") {
   return String(value)
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\([^)]*\)/g, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
+}
+
+function normaliseCsvTeamAlias(cleanedValue) {
+  const aliases = {
+    "bosnia herzegovina": "bosnia and herzegovina",
+    "cote d ivoire": "ivory coast",
+    "ivory coast": "ivory coast",
+    "south korea": "korea republic",
+    turkiye: "turkiye",
+    turkey: "turkiye",
+    usa: "united states",
+    us: "united states",
+    "united states of america": "united states",
+  };
+
+  return aliases[cleanedValue] || cleanedValue;
 }
 
 function hasPlaceholderTeamNames(tournament) {
@@ -2215,8 +2229,14 @@ function applyOfficialTeamNames(tournament) {
     const nextName = shouldRename ? officialTeam.name : team.name;
     const nextFlag = officialTeam.flagEmoji;
     const nextFlagUrl = getTeamFlagUrl(nextName);
+    const nextSweepstakePot = getTeamSweepstakePot(nextName);
 
-    if (nextName === team.name && nextFlag === team.flagEmoji && nextFlagUrl === team.flagUrl) {
+    if (
+      nextName === team.name &&
+      nextFlag === team.flagEmoji &&
+      nextFlagUrl === team.flagUrl &&
+      nextSweepstakePot === team.sweepstakePot
+    ) {
       return team;
     }
 
@@ -2226,6 +2246,7 @@ function applyOfficialTeamNames(tournament) {
       name: nextName,
       flagEmoji: nextFlag,
       flagUrl: nextFlagUrl,
+      sweepstakePot: nextSweepstakePot,
     };
   });
 
