@@ -523,8 +523,9 @@ function AdminScores({ tournament, updateFixtureScore, updateFixtureStats }) {
         title="Enter Scores"
         subtitle="Private admin-style page for updating match results, penalties, and cards. Changes save automatically."
       />
-      <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4 text-sm font-semibold text-amber-100">
-        This is not password protected yet. Later you can connect it to a real admin login.
+      <div className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm font-semibold text-cyan-50">
+        Changes are only published to the live site when you enter the admin password and press
+        Save live site. Keep the admin page URL private.
       </div>
       <div className="glass-card flex flex-wrap gap-2 rounded-lg p-2 shadow-sm">
         {[
