@@ -509,29 +509,66 @@ function Fixtures({ tournament }) {
 }
 
 function AdminScores({ tournament, updateFixtureScore, updateFixtureStats }) {
+  const [adminView, setAdminView] = React.useState("scores");
   const groupFixtures = tournament.fixtures
     .map((fixture) => hydrateFixtureTeams(fixture, tournament.teams))
     .filter((fixture) => fixture.stage === "Group");
+  const allFixtures = tournament.fixtures.map((fixture) => hydrateFixtureTeams(fixture, tournament.teams));
 
   return (
     <div className="space-y-6">
       <SectionTitle
         title="Enter Scores"
-        subtitle="Private admin-style page for updating match results. Scores save automatically in this browser."
+        subtitle="Private admin-style page for updating match results, penalties, and cards. Changes save automatically."
       />
       <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4 text-sm font-semibold text-amber-100">
         This is not password protected yet. Later you can connect it to a real admin login.
       </div>
-      <div className="space-y-3">
-        {groupFixtures.map((fixture) => (
-          <ScoreInputCard
-            key={fixture.id}
-            fixture={fixture}
-            updateFixtureScore={updateFixtureScore}
-            updateFixtureStats={updateFixtureStats}
-          />
+      <div className="glass-card flex flex-wrap gap-2 rounded-lg p-2 shadow-sm">
+        {[
+          ["scores", "Scores"],
+          ["match-stats", "Penalties & cards"],
+        ].map(([viewId, label]) => (
+          <button
+            key={viewId}
+            type="button"
+            onClick={() => setAdminView(viewId)}
+            className={`rounded-md px-4 py-2 text-sm font-black transition ${
+              adminView === viewId
+                ? "bg-cyan-300 text-slate-950"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {label}
+          </button>
         ))}
       </div>
+      {adminView === "scores" && (
+        <div className="space-y-3">
+          {groupFixtures.map((fixture) => (
+            <ScoreInputCard
+              key={fixture.id}
+              fixture={fixture}
+              updateFixtureScore={updateFixtureScore}
+            />
+          ))}
+        </div>
+      )}
+      {adminView === "match-stats" && (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm font-semibold text-cyan-50">
+            Enter normal-time and extra-time penalties only. Do not include penalty shootouts.
+            Yellow cards count as 1 point and red cards count as 2 points for Prize 6.
+          </div>
+          {allFixtures.map((fixture) => (
+            <MatchStatsInputCard
+              key={fixture.id}
+              fixture={fixture}
+              updateFixtureStats={updateFixtureStats}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1010,66 +1047,18 @@ function CompactTeam({ team }) {
   );
 }
 
-function ScoreInputCard({ fixture, updateFixtureScore, updateFixtureStats }) {
-  const penaltyFields = [
-    {
-      key: "homePenaltiesWon",
-      label: "Pens won",
-      teamName: fixture.homeTeamName,
-      value: fixture.homePenaltiesWon,
-    },
-    {
-      key: "homePenaltiesConceded",
-      label: "Pens conceded",
-      teamName: fixture.homeTeamName,
-      value: fixture.homePenaltiesConceded,
-    },
-    {
-      key: "awayPenaltiesWon",
-      label: "Pens won",
-      teamName: fixture.awayTeamName,
-      value: fixture.awayPenaltiesWon,
-    },
-    {
-      key: "awayPenaltiesConceded",
-      label: "Pens conceded",
-      teamName: fixture.awayTeamName,
-      value: fixture.awayPenaltiesConceded,
-    },
-  ];
-
+function ScoreInputCard({ fixture, updateFixtureScore }) {
   return (
-    <div className="glass-card grid gap-4 rounded-lg p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-start">
+    <div className="glass-card grid gap-4 rounded-lg p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center">
       <div className="space-y-3">
         <p className="text-xs font-bold uppercase text-cyan-100/65">
-          {formatDate(fixture.date)} · {getKickoffUk(fixture)} UK · Group {fixture.group}
+          {formatDate(fixture.date)} · {getKickoffUk(fixture)} UK · {getFixtureLabel(fixture)}
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-base font-bold">
           <TeamName team={fixture.homeTeam} name={fixture.homeTeamName} />
           <span className="text-white/40">vs</span>
           <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {penaltyFields.map((field) => (
-            <label key={field.key} className="text-xs font-semibold text-white/65">
-              <span className="block truncate">{field.teamName}</span>
-              <span className="mt-1 block text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100/45">
-                {field.label}
-              </span>
-              <input
-                aria-label={`${field.teamName} ${field.label}`}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
-                min="0"
-                type="number"
-                value={field.value ?? 0}
-                onChange={(event) =>
-                  updateFixtureStats(fixture.id, { [field.key]: event.target.value })
-                }
-              />
-            </label>
-          ))}
-        </div>
-        <p className="text-xs font-medium text-white/45">Do not include penalty shootouts.</p>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -1093,6 +1082,80 @@ function ScoreInputCard({ fixture, updateFixtureScore, updateFixtureStats }) {
             updateFixtureScore(fixture.id, fixture.homeScore ?? "", event.target.value)
           }
         />
+      </div>
+    </div>
+  );
+}
+
+function MatchStatsInputCard({ fixture, updateFixtureStats }) {
+  const homeFields = [
+    ["homePenaltiesWon", "Pens won", fixture.homePenaltiesWon],
+    ["homePenaltiesConceded", "Pens conceded", fixture.homePenaltiesConceded],
+    ["homeYellowCards", "Yellows", fixture.homeYellowCards],
+    ["homeRedCards", "Reds", fixture.homeRedCards],
+  ];
+  const awayFields = [
+    ["awayPenaltiesWon", "Pens won", fixture.awayPenaltiesWon],
+    ["awayPenaltiesConceded", "Pens conceded", fixture.awayPenaltiesConceded],
+    ["awayYellowCards", "Yellows", fixture.awayYellowCards],
+    ["awayRedCards", "Reds", fixture.awayRedCards],
+  ];
+
+  return (
+    <div className="glass-card rounded-lg p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase text-cyan-100/65">
+            {formatDate(fixture.date)} · {getKickoffUk(fixture)} UK · {getFixtureLabel(fixture)}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-base font-bold">
+            <TeamName team={fixture.homeTeam} name={fixture.homeTeamName} />
+            <span className="text-white/40">vs</span>
+            <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
+          </div>
+        </div>
+        <span className="rounded bg-white/10 px-2 py-1 text-xs font-black text-white/70">
+          Match {fixture.matchNumber}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <TeamStatsInputs
+          teamName={fixture.homeTeamName}
+          fields={homeFields}
+          fixtureId={fixture.id}
+          updateFixtureStats={updateFixtureStats}
+        />
+        <TeamStatsInputs
+          teamName={fixture.awayTeamName}
+          fields={awayFields}
+          fixtureId={fixture.id}
+          updateFixtureStats={updateFixtureStats}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TeamStatsInputs({ teamName, fields, fixtureId, updateFixtureStats }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-950/35 p-3">
+      <p className="mb-3 truncate text-sm font-black text-white">{teamName}</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {fields.map(([key, label, value]) => (
+          <label key={key} className="text-xs font-semibold text-white/65">
+            <span className="block text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100/45">
+              {label}
+            </span>
+            <input
+              aria-label={`${teamName} ${label}`}
+              className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
+              min="0"
+              type="number"
+              value={value ?? 0}
+              onChange={(event) => updateFixtureStats(fixtureId, { [key]: event.target.value })}
+            />
+          </label>
+        ))}
       </div>
     </div>
   );
@@ -2677,6 +2740,10 @@ function formatShortDate(dateText) {
 function getKickoffUk(fixture) {
   if (fixture.kickoffUk) return fixture.kickoffUk;
   return fixture.matchNumber % 2 === 1 ? "17:00" : "20:00";
+}
+
+function getFixtureLabel(fixture) {
+  return fixture.stage === "Group" ? `Group ${fixture.group}` : fixture.stage;
 }
 
 function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
