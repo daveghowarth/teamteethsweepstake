@@ -616,7 +616,14 @@ function RulesPage({ tournament }) {
 }
 
 function PrizeRuleCard({ rule, onOpenTable }) {
-  const hasPopoutTable = rule.id === "master-of-chaos" || rule.id === "dirtiest-player";
+  const hasPopoutTable =
+    rule.complexity === "table" ||
+    rule.id === "master-of-chaos" ||
+    rule.id === "dirtiest-player";
+  const buttonText =
+    rule.id === "master-of-chaos" || rule.id === "dirtiest-player"
+      ? "View league table"
+      : "View criteria";
 
   return (
     <article className="glass-card rounded-lg p-5 shadow-sm transition hover:-translate-y-1 hover:bg-white/12">
@@ -636,35 +643,8 @@ function PrizeRuleCard({ rule, onOpenTable }) {
           onClick={() => onOpenTable(rule.id)}
           className="mt-4 rounded-lg bg-cyan-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:-translate-y-0.5 hover:bg-white"
         >
-          View league table
+          {buttonText}
         </button>
-      )}
-
-      {rule.complexity === "table" && (
-        <div className="mt-4 overflow-hidden rounded-lg border border-white/12">
-          <table className="w-full text-sm">
-            <thead className="bg-white/10 text-xs uppercase text-cyan-100/70">
-              <tr>
-                {rule.tableColumns.map((column) => (
-                  <th key={column} className="px-3 py-2 text-left">
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rule.tableRows.map((row) => (
-                <tr key={row.join("-")} className="border-t border-white/10">
-                  {row.map((cell) => (
-                    <td key={cell} className="px-3 py-2">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
     </article>
   );
@@ -685,6 +665,11 @@ function PrizeIcon({ prizeId, label, size = "large", active = true }) {
 }
 
 function PrizeTableModal({ rule, tournament, onClose }) {
+  const modalLabel =
+    rule.id === "master-of-chaos" || rule.id === "dirtiest-player"
+      ? "League table"
+      : "Prize criteria";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
@@ -700,7 +685,7 @@ function PrizeTableModal({ rule, tournament, onClose }) {
       <div className="w-full max-w-5xl overflow-hidden rounded-lg border border-white/12 bg-slate-950 shadow-soft">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/10 bg-slate-950/95 px-5 py-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-wide text-cyan-200">League table</p>
+            <p className="text-xs font-black uppercase tracking-wide text-cyan-200">{modalLabel}</p>
             <h2 id="prize-table-title" className="text-2xl font-black text-white">
               {rule.name}
             </h2>
@@ -717,8 +702,38 @@ function PrizeTableModal({ rule, tournament, onClose }) {
         <div className="max-h-[calc(100vh-9rem)] overflow-y-auto p-5">
           {rule.id === "master-of-chaos" && <MasterOfChaosTable tournament={tournament} />}
           {rule.id === "dirtiest-player" && <DirtiestPlayerTable tournament={tournament} />}
+          {rule.complexity === "table" && <PrizeCriteriaTable rule={rule} />}
         </div>
       </div>
+    </div>
+  );
+}
+
+function PrizeCriteriaTable({ rule }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/12">
+      <table className="w-full text-sm">
+        <thead className="bg-white/10 text-xs uppercase text-cyan-100/70">
+          <tr>
+            {rule.tableColumns.map((column) => (
+              <th key={column} className="px-3 py-2 text-left">
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rule.tableRows.map((row) => (
+            <tr key={row.join("-")} className="border-t border-white/10">
+              {row.map((cell) => (
+                <td key={cell} className="px-3 py-2">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
