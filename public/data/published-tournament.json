@@ -1,8 +1,8 @@
 {
   "name": "FIFA World Cup 2026",
   "version": 1,
-  "createdAt": "2026-06-02T15:40:05.498Z",
-  "updatedAt": "2026-06-02T15:40:05.498Z",
+  "createdAt": "2026-06-02T16:41:49.439Z",
+  "updatedAt": "2026-06-02T16:41:49.439Z",
   "groups": [
     "A",
     "B",
@@ -513,7 +513,11 @@
       "homeTeamName": "Mexico",
       "awayTeamName": "South Africa",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M2",
@@ -528,7 +532,11 @@
       "homeTeamName": "Korea Republic",
       "awayTeamName": "Czechia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M3",
@@ -543,7 +551,11 @@
       "homeTeamName": "Canada",
       "awayTeamName": "Bosnia and Herzegovina",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M4",
@@ -558,7 +570,11 @@
       "homeTeamName": "United States",
       "awayTeamName": "Paraguay",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M5",
@@ -573,7 +589,11 @@
       "homeTeamName": "Qatar",
       "awayTeamName": "Switzerland",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M6",
@@ -588,7 +608,11 @@
       "homeTeamName": "Brazil",
       "awayTeamName": "Morocco",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M7",
@@ -603,7 +627,11 @@
       "homeTeamName": "Ivory Coast",
       "awayTeamName": "Ecuador",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M8",
@@ -618,7 +646,11 @@
       "homeTeamName": "Haiti",
       "awayTeamName": "Scotland",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M9",
@@ -633,7 +665,11 @@
       "homeTeamName": "Sweden",
       "awayTeamName": "Tunisia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M10",
@@ -648,7 +684,11 @@
       "homeTeamName": "Australia",
       "awayTeamName": "Türkiye",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M11",
@@ -663,7 +703,11 @@
       "homeTeamName": "Germany",
       "awayTeamName": "Curaçao",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M12",
@@ -678,7 +722,11 @@
       "homeTeamName": "Netherlands",
       "awayTeamName": "Japan",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M13",
@@ -693,7 +741,11 @@
       "homeTeamName": "Spain",
       "awayTeamName": "Cape Verde",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M14",
@@ -708,7 +760,11 @@
       "homeTeamName": "Belgium",
       "awayTeamName": "Egypt",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M15",
@@ -723,7 +779,11 @@
       "homeTeamName": "Saudi Arabia",
       "awayTeamName": "Uruguay",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M16",
@@ -738,7 +798,11 @@
       "homeTeamName": "Iran",
       "awayTeamName": "New Zealand",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M17",
@@ -753,7 +817,11 @@
       "homeTeamName": "Argentina",
       "awayTeamName": "Algeria",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M18",
@@ -768,7 +836,11 @@
       "homeTeamName": "Austria",
       "awayTeamName": "Jordan",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M19",
@@ -783,7 +855,11 @@
       "homeTeamName": "Portugal",
       "awayTeamName": "DR Congo",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M20",
@@ -798,7 +874,11 @@
       "homeTeamName": "France",
       "awayTeamName": "Senegal",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M21",
@@ -813,7 +893,11 @@
       "homeTeamName": "England",
       "awayTeamName": "Croatia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M22",
@@ -828,7 +912,11 @@
       "homeTeamName": "Iraq",
       "awayTeamName": "Norway",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M23",
@@ -843,7 +931,11 @@
       "homeTeamName": "Ghana",
       "awayTeamName": "Panama",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M24",
@@ -858,7 +950,11 @@
       "homeTeamName": "Uzbekistan",
       "awayTeamName": "Colombia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M25",
@@ -873,7 +969,11 @@
       "homeTeamName": "Czechia",
       "awayTeamName": "South Africa",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M26",
@@ -888,7 +988,11 @@
       "homeTeamName": "Switzerland",
       "awayTeamName": "Bosnia and Herzegovina",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M27",
@@ -903,7 +1007,11 @@
       "homeTeamName": "Canada",
       "awayTeamName": "Qatar",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M28",
@@ -918,7 +1026,11 @@
       "homeTeamName": "Mexico",
       "awayTeamName": "Korea Republic",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M29",
@@ -933,7 +1045,11 @@
       "homeTeamName": "United States",
       "awayTeamName": "Australia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M30",
@@ -948,7 +1064,11 @@
       "homeTeamName": "Scotland",
       "awayTeamName": "Morocco",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M31",
@@ -963,7 +1083,11 @@
       "homeTeamName": "Ecuador",
       "awayTeamName": "Curaçao",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M32",
@@ -978,7 +1102,11 @@
       "homeTeamName": "Brazil",
       "awayTeamName": "Haiti",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M33",
@@ -993,7 +1121,11 @@
       "homeTeamName": "Türkiye",
       "awayTeamName": "Paraguay",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M34",
@@ -1008,7 +1140,11 @@
       "homeTeamName": "Netherlands",
       "awayTeamName": "Sweden",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M35",
@@ -1023,7 +1159,11 @@
       "homeTeamName": "Germany",
       "awayTeamName": "Ivory Coast",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M36",
@@ -1038,7 +1178,11 @@
       "homeTeamName": "Tunisia",
       "awayTeamName": "Japan",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M37",
@@ -1053,7 +1197,11 @@
       "homeTeamName": "New Zealand",
       "awayTeamName": "Egypt",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M38",
@@ -1068,7 +1216,11 @@
       "homeTeamName": "Spain",
       "awayTeamName": "Saudi Arabia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M39",
@@ -1083,7 +1235,11 @@
       "homeTeamName": "Belgium",
       "awayTeamName": "Iran",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M40",
@@ -1098,7 +1254,11 @@
       "homeTeamName": "Uruguay",
       "awayTeamName": "Cape Verde",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M41",
@@ -1113,7 +1273,11 @@
       "homeTeamName": "Argentina",
       "awayTeamName": "Austria",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M42",
@@ -1128,7 +1292,11 @@
       "homeTeamName": "France",
       "awayTeamName": "Iraq",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M43",
@@ -1143,7 +1311,11 @@
       "homeTeamName": "Panama",
       "awayTeamName": "Croatia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M44",
@@ -1158,7 +1330,11 @@
       "homeTeamName": "Norway",
       "awayTeamName": "Senegal",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M45",
@@ -1173,7 +1349,11 @@
       "homeTeamName": "Colombia",
       "awayTeamName": "DR Congo",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M46",
@@ -1188,7 +1368,11 @@
       "homeTeamName": "Portugal",
       "awayTeamName": "Uzbekistan",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M47",
@@ -1203,7 +1387,11 @@
       "homeTeamName": "England",
       "awayTeamName": "Ghana",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M48",
@@ -1218,7 +1406,11 @@
       "homeTeamName": "Jordan",
       "awayTeamName": "Algeria",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M49",
@@ -1233,7 +1425,11 @@
       "homeTeamName": "Switzerland",
       "awayTeamName": "Canada",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M50",
@@ -1248,7 +1444,11 @@
       "homeTeamName": "Bosnia and Herzegovina",
       "awayTeamName": "Qatar",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M51",
@@ -1263,7 +1463,11 @@
       "homeTeamName": "Scotland",
       "awayTeamName": "Brazil",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M52",
@@ -1278,7 +1482,11 @@
       "homeTeamName": "Morocco",
       "awayTeamName": "Haiti",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M53",
@@ -1293,7 +1501,11 @@
       "homeTeamName": "Japan",
       "awayTeamName": "Sweden",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M54",
@@ -1308,7 +1520,11 @@
       "homeTeamName": "Tunisia",
       "awayTeamName": "Netherlands",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M55",
@@ -1323,7 +1539,11 @@
       "homeTeamName": "Czechia",
       "awayTeamName": "Mexico",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M56",
@@ -1338,7 +1558,11 @@
       "homeTeamName": "South Africa",
       "awayTeamName": "Korea Republic",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M57",
@@ -1353,7 +1577,11 @@
       "homeTeamName": "Türkiye",
       "awayTeamName": "United States",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M58",
@@ -1368,7 +1596,11 @@
       "homeTeamName": "Paraguay",
       "awayTeamName": "Australia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M59",
@@ -1383,7 +1615,11 @@
       "homeTeamName": "Ecuador",
       "awayTeamName": "Germany",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M60",
@@ -1398,7 +1634,11 @@
       "homeTeamName": "Curaçao",
       "awayTeamName": "Ivory Coast",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M61",
@@ -1413,7 +1653,11 @@
       "homeTeamName": "Cape Verde",
       "awayTeamName": "Saudi Arabia",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M62",
@@ -1428,7 +1672,11 @@
       "homeTeamName": "Uruguay",
       "awayTeamName": "Spain",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M63",
@@ -1443,7 +1691,11 @@
       "homeTeamName": "Egypt",
       "awayTeamName": "Iran",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M64",
@@ -1458,7 +1710,11 @@
       "homeTeamName": "New Zealand",
       "awayTeamName": "Belgium",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M65",
@@ -1473,7 +1729,11 @@
       "homeTeamName": "Norway",
       "awayTeamName": "France",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M66",
@@ -1488,7 +1748,11 @@
       "homeTeamName": "Senegal",
       "awayTeamName": "Iraq",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M67",
@@ -1503,7 +1767,11 @@
       "homeTeamName": "Colombia",
       "awayTeamName": "Portugal",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M68",
@@ -1518,7 +1786,11 @@
       "homeTeamName": "DR Congo",
       "awayTeamName": "Uzbekistan",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M69",
@@ -1533,7 +1805,11 @@
       "homeTeamName": "Algeria",
       "awayTeamName": "Austria",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M70",
@@ -1548,7 +1824,11 @@
       "homeTeamName": "Jordan",
       "awayTeamName": "Argentina",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M71",
@@ -1563,7 +1843,11 @@
       "homeTeamName": "Panama",
       "awayTeamName": "England",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M72",
@@ -1578,7 +1862,11 @@
       "homeTeamName": "Croatia",
       "awayTeamName": "Ghana",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M73",
@@ -1593,7 +1881,11 @@
       "homeTeamName": "2A",
       "awayTeamName": "2B",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M74",
@@ -1608,7 +1900,11 @@
       "homeTeamName": "1C",
       "awayTeamName": "2F",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M75",
@@ -1623,7 +1919,11 @@
       "homeTeamName": "1E",
       "awayTeamName": "3ACDF",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M76",
@@ -1638,7 +1938,11 @@
       "homeTeamName": "1F",
       "awayTeamName": "2C",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M77",
@@ -1653,7 +1957,11 @@
       "homeTeamName": "1A",
       "awayTeamName": "3CEFHI",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M78",
@@ -1668,7 +1976,11 @@
       "homeTeamName": "2E",
       "awayTeamName": "2I",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M79",
@@ -1683,7 +1995,11 @@
       "homeTeamName": "1I",
       "awayTeamName": "3CDFGH",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M80",
@@ -1698,7 +2014,11 @@
       "homeTeamName": "1D",
       "awayTeamName": "3BEFIJ",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M81",
@@ -1713,7 +2033,11 @@
       "homeTeamName": "1L",
       "awayTeamName": "3EHIJK",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M82",
@@ -1728,7 +2052,11 @@
       "homeTeamName": "1G",
       "awayTeamName": "3AEHIJ",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M83",
@@ -1743,7 +2071,11 @@
       "homeTeamName": "1H",
       "awayTeamName": "2J",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M84",
@@ -1758,7 +2090,11 @@
       "homeTeamName": "2K",
       "awayTeamName": "2L",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M85",
@@ -1773,7 +2109,11 @@
       "homeTeamName": "1B",
       "awayTeamName": "3EFGIJ",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M86",
@@ -1788,7 +2128,11 @@
       "homeTeamName": "2D",
       "awayTeamName": "2G",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M87",
@@ -1803,7 +2147,11 @@
       "homeTeamName": "1J",
       "awayTeamName": "2H",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M88",
@@ -1818,7 +2166,11 @@
       "homeTeamName": "1K",
       "awayTeamName": "3DEIJL",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M89",
@@ -1833,7 +2185,11 @@
       "homeTeamName": "W73",
       "awayTeamName": "W76",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M90",
@@ -1848,7 +2204,11 @@
       "homeTeamName": "W74",
       "awayTeamName": "W78",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M91",
@@ -1863,7 +2223,11 @@
       "homeTeamName": "W75",
       "awayTeamName": "W77",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M92",
@@ -1878,7 +2242,11 @@
       "homeTeamName": "W79",
       "awayTeamName": "W81",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M93",
@@ -1893,7 +2261,11 @@
       "homeTeamName": "W80",
       "awayTeamName": "W82",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M94",
@@ -1908,7 +2280,11 @@
       "homeTeamName": "W83",
       "awayTeamName": "W84",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M95",
@@ -1923,7 +2299,11 @@
       "homeTeamName": "W85",
       "awayTeamName": "W88",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M96",
@@ -1938,7 +2318,11 @@
       "homeTeamName": "W86",
       "awayTeamName": "W87",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M97",
@@ -1953,7 +2337,11 @@
       "homeTeamName": "W89",
       "awayTeamName": "W90",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M98",
@@ -1968,7 +2356,11 @@
       "homeTeamName": "W91",
       "awayTeamName": "W92",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M99",
@@ -1983,7 +2375,11 @@
       "homeTeamName": "W93",
       "awayTeamName": "W94",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M100",
@@ -1998,7 +2394,11 @@
       "homeTeamName": "W95",
       "awayTeamName": "W96",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M101",
@@ -2013,7 +2413,11 @@
       "homeTeamName": "W97",
       "awayTeamName": "W98",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M102",
@@ -2028,7 +2432,11 @@
       "homeTeamName": "W99",
       "awayTeamName": "W100",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M103",
@@ -2043,7 +2451,11 @@
       "homeTeamName": "L101",
       "awayTeamName": "L102",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     },
     {
       "id": "M104",
@@ -2058,7 +2470,11 @@
       "homeTeamName": "W101",
       "awayTeamName": "W102",
       "homeScore": null,
-      "awayScore": null
+      "awayScore": null,
+      "homePenaltiesWon": 0,
+      "homePenaltiesConceded": 0,
+      "awayPenaltiesWon": 0,
+      "awayPenaltiesConceded": 0
     }
   ],
   "prizeRules": [
@@ -2138,7 +2554,7 @@
       "id": "master-of-chaos",
       "name": "Prize 5: Master of Chaos",
       "prize": "TBC",
-      "summary": "Awarded to the player whose two teams' matches have jointly produced the most goals for and against across the tournament.",
+      "summary": "Awarded to the player whose two teams' matches have jointly produced the most goals for and against, plus penalties won and conceded across the tournament. Penalty shootouts do not count.",
       "complexity": "simple"
     },
     {
@@ -2199,5 +2615,5 @@
       "potBTeamId": "H4"
     }
   ],
-  "publishedAt": "2026-06-02T15:40:05.498Z"
+  "publishedAt": "2026-06-02T16:41:49.439Z"
 }

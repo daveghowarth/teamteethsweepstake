@@ -226,6 +226,26 @@ function App() {
     }));
   }
 
+  function updateFixtureStats(fixtureId, stats) {
+    setTournament((current) => ({
+      ...current,
+      fixtures: current.fixtures.map((fixture) =>
+        fixture.id === fixtureId
+          ? {
+              ...fixture,
+              ...Object.fromEntries(
+                Object.entries(stats).map(([key, value]) => [
+                  key,
+                  value === "" ? 0 : Number(value),
+                ])
+              ),
+            }
+          : fixture
+      ),
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
   function resetTournament() {
     const confirmed = window.confirm("Reset all scores and data back to the starter tournament?");
     if (confirmed) {
@@ -286,7 +306,11 @@ function App() {
             <PlayersPage tournament={displayTournament} groupTables={groupTables} />
           )}
           {activeTab === "admin" && (
-            <AdminScores tournament={displayTournament} updateFixtureScore={updateFixtureScore} />
+            <AdminScores
+              tournament={displayTournament}
+              updateFixtureScore={updateFixtureScore}
+              updateFixtureStats={updateFixtureStats}
+            />
           )}
           {activeTab === "sweepstake" && <SweepstakePlaceholder isEditableSite={isEditableSite} />}
           {activeTab === "settings" && (
@@ -464,7 +488,7 @@ function Fixtures({ tournament }) {
   );
 }
 
-function AdminScores({ tournament, updateFixtureScore }) {
+function AdminScores({ tournament, updateFixtureScore, updateFixtureStats }) {
   const groupFixtures = tournament.fixtures
     .map((fixture) => hydrateFixtureTeams(fixture, tournament.teams))
     .filter((fixture) => fixture.stage === "Group");
@@ -480,7 +504,12 @@ function AdminScores({ tournament, updateFixtureScore }) {
       </div>
       <div className="space-y-3">
         {groupFixtures.map((fixture) => (
-          <ScoreInputCard key={fixture.id} fixture={fixture} updateFixtureScore={updateFixtureScore} />
+          <ScoreInputCard
+            key={fixture.id}
+            fixture={fixture}
+            updateFixtureScore={updateFixtureScore}
+            updateFixtureStats={updateFixtureStats}
+          />
         ))}
       </div>
     </div>
@@ -628,12 +657,21 @@ function MasterOfChaosTable({ tournament }) {
 
   return (
     <ResponsiveTable
-      columns={["Player", "Pot 1 goals", "Pot 2 goals", "Total goals"]}
+      columns={[
+        "Player",
+        "Pot A goals",
+        "Pot A pens",
+        "Pot B goals",
+        "Pot B pens",
+        "Total chaos",
+      ]}
       rows={rows.map((row, index) => [
         `${index + 1}. ${row.player}`,
-        row.pot1Goals,
-        row.pot2Goals,
-        row.totalGoals,
+        row.potAGoals,
+        row.potAPenalties,
+        row.potBGoals,
+        row.potBPenalties,
+        row.totalChaos,
       ])}
     />
   );
@@ -952,10 +990,37 @@ function CompactTeam({ team }) {
   );
 }
 
-function ScoreInputCard({ fixture, updateFixtureScore }) {
+function ScoreInputCard({ fixture, updateFixtureScore, updateFixtureStats }) {
+  const penaltyFields = [
+    {
+      key: "homePenaltiesWon",
+      label: "Pens won",
+      teamName: fixture.homeTeamName,
+      value: fixture.homePenaltiesWon,
+    },
+    {
+      key: "homePenaltiesConceded",
+      label: "Pens conceded",
+      teamName: fixture.homeTeamName,
+      value: fixture.homePenaltiesConceded,
+    },
+    {
+      key: "awayPenaltiesWon",
+      label: "Pens won",
+      teamName: fixture.awayTeamName,
+      value: fixture.awayPenaltiesWon,
+    },
+    {
+      key: "awayPenaltiesConceded",
+      label: "Pens conceded",
+      teamName: fixture.awayTeamName,
+      value: fixture.awayPenaltiesConceded,
+    },
+  ];
+
   return (
-    <div className="glass-card grid gap-3 rounded-lg p-4 shadow-sm md:grid-cols-[1fr_auto] md:items-center">
-      <div>
+    <div className="glass-card grid gap-4 rounded-lg p-4 shadow-sm lg:grid-cols-[1fr_auto] lg:items-start">
+      <div className="space-y-3">
         <p className="text-xs font-bold uppercase text-cyan-100/65">
           {formatDate(fixture.date)} · {getKickoffUk(fixture)} UK · Group {fixture.group}
         </p>
@@ -964,6 +1029,27 @@ function ScoreInputCard({ fixture, updateFixtureScore }) {
           <span className="text-white/40">vs</span>
           <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
         </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {penaltyFields.map((field) => (
+            <label key={field.key} className="text-xs font-semibold text-white/65">
+              <span className="block truncate">{field.teamName}</span>
+              <span className="mt-1 block text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100/45">
+                {field.label}
+              </span>
+              <input
+                aria-label={`${field.teamName} ${field.label}`}
+                className="mt-1 w-full rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-sm font-bold text-white outline-none transition focus:border-cyan-300"
+                min="0"
+                type="number"
+                value={field.value ?? 0}
+                onChange={(event) =>
+                  updateFixtureStats(fixture.id, { [field.key]: event.target.value })
+                }
+              />
+            </label>
+          ))}
+        </div>
+        <p className="text-xs font-medium text-white/45">Do not include penalty shootouts.</p>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -1880,7 +1966,18 @@ function getPrizeRules(tournament) {
   // Older browser saves may still contain the first draft of the prizes.
   // If the new prize IDs are missing, show the corrected starter rules.
   const hasCurrentRules = tournament.prizeRules.some((rule) => rule.id === "master-of-chaos");
-  return hasCurrentRules ? tournament.prizeRules : defaultRules;
+  if (!hasCurrentRules) return defaultRules;
+
+  const savedRulesById = new Map(tournament.prizeRules.map((rule) => [rule.id, rule]));
+
+  return defaultRules.map((defaultRule) => {
+    const savedRule = savedRulesById.get(defaultRule.id);
+
+    return {
+      ...defaultRule,
+      prize: savedRule?.prize ?? defaultRule.prize,
+    };
+  });
 }
 
 function getParticipants(tournament) {
@@ -2311,6 +2408,10 @@ function applyOfficialFixtureSchedule(tournament) {
         homeRedCards: previousFixture.homeRedCards || 0,
         awayYellowCards: previousFixture.awayYellowCards || 0,
         awayRedCards: previousFixture.awayRedCards || 0,
+        homePenaltiesWon: previousFixture.homePenaltiesWon || 0,
+        homePenaltiesConceded: previousFixture.homePenaltiesConceded || 0,
+        awayPenaltiesWon: previousFixture.awayPenaltiesWon || 0,
+        awayPenaltiesConceded: previousFixture.awayPenaltiesConceded || 0,
       };
     }),
     updatedAt: new Date().toISOString(),
@@ -2413,17 +2514,21 @@ function getMasterOfChaosRows(tournament) {
   return getParticipants(tournament)
     .map((participant) => {
       const picks = getParticipantPicks(participant, tournament.teams);
-      const pot1Goals = getTeamMatchGoalTotal(picks.potA?.id, tournament.fixtures);
-      const pot2Goals = getTeamMatchGoalTotal(picks.potB?.id, tournament.fixtures);
+      const potAGoals = getTeamMatchGoalTotal(picks.potA?.id, tournament.fixtures);
+      const potAPenalties = getTeamMatchPenaltyTotal(picks.potA?.id, tournament.fixtures);
+      const potBGoals = getTeamMatchGoalTotal(picks.potB?.id, tournament.fixtures);
+      const potBPenalties = getTeamMatchPenaltyTotal(picks.potB?.id, tournament.fixtures);
 
       return {
         player: participant.name,
-        pot1Goals,
-        pot2Goals,
-        totalGoals: pot1Goals + pot2Goals,
+        potAGoals,
+        potAPenalties,
+        potBGoals,
+        potBPenalties,
+        totalChaos: potAGoals + potAPenalties + potBGoals + potBPenalties,
       };
     })
-    .sort((a, b) => b.totalGoals - a.totalGoals || a.player.localeCompare(b.player));
+    .sort((a, b) => b.totalChaos - a.totalChaos || a.player.localeCompare(b.player));
 }
 
 function getDirtiestPlayerRows(tournament) {
@@ -2457,6 +2562,22 @@ function getTeamMatchGoalTotal(teamId, fixtures) {
     if (!played || !teamPlayed) return total;
 
     return total + fixture.homeScore + fixture.awayScore;
+  }, 0);
+}
+
+function getTeamMatchPenaltyTotal(teamId, fixtures) {
+  if (!teamId) return 0;
+
+  return fixtures.reduce((total, fixture) => {
+    if (fixture.homeTeamId === teamId) {
+      return total + (fixture.homePenaltiesWon || 0) + (fixture.homePenaltiesConceded || 0);
+    }
+
+    if (fixture.awayTeamId === teamId) {
+      return total + (fixture.awayPenaltiesWon || 0) + (fixture.awayPenaltiesConceded || 0);
+    }
+
+    return total;
   }, 0);
 }
 
@@ -2554,6 +2675,10 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       homeRedCards: previousFixture?.homeRedCards || 0,
       awayYellowCards: previousFixture?.awayYellowCards || 0,
       awayRedCards: previousFixture?.awayRedCards || 0,
+      homePenaltiesWon: previousFixture?.homePenaltiesWon || 0,
+      homePenaltiesConceded: previousFixture?.homePenaltiesConceded || 0,
+      awayPenaltiesWon: previousFixture?.awayPenaltiesWon || 0,
+      awayPenaltiesConceded: previousFixture?.awayPenaltiesConceded || 0,
       apiStatus: fifaFixture.MatchStatus || null,
       apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName),
     };
@@ -2674,6 +2799,10 @@ function mapApiFootballDataToTournament(currentTournament, apiFixtures, syncPayl
       homeRedCards: previousFixture?.homeRedCards || 0,
       awayYellowCards: previousFixture?.awayYellowCards || 0,
       awayRedCards: previousFixture?.awayRedCards || 0,
+      homePenaltiesWon: previousFixture?.homePenaltiesWon || 0,
+      homePenaltiesConceded: previousFixture?.homePenaltiesConceded || 0,
+      awayPenaltiesWon: previousFixture?.awayPenaltiesWon || 0,
+      awayPenaltiesConceded: previousFixture?.awayPenaltiesConceded || 0,
       apiStatus: apiFixture.fixture?.status?.short || null,
       apiRound: roundText,
     };
@@ -2808,6 +2937,10 @@ function mapTheSportsDbDataToTournament(currentTournament, apiEvents, syncPayloa
       homeRedCards: previousFixture?.homeRedCards || 0,
       awayYellowCards: previousFixture?.awayYellowCards || 0,
       awayRedCards: previousFixture?.awayRedCards || 0,
+      homePenaltiesWon: previousFixture?.homePenaltiesWon || 0,
+      homePenaltiesConceded: previousFixture?.homePenaltiesConceded || 0,
+      awayPenaltiesWon: previousFixture?.awayPenaltiesWon || 0,
+      awayPenaltiesConceded: previousFixture?.awayPenaltiesConceded || 0,
       apiStatus: event.strStatus || null,
       apiRound: event.strRound || event.strGroup || null,
     };

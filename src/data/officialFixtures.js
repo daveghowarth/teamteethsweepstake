@@ -136,6 +136,10 @@ export function createOfficialFixtures(teams) {
       awayTeamName: awayTeam?.name || awayName,
       homeScore: null,
       awayScore: null,
+      homePenaltiesWon: 0,
+      homePenaltiesConceded: 0,
+      awayPenaltiesWon: 0,
+      awayPenaltiesConceded: 0,
     };
   });
 }

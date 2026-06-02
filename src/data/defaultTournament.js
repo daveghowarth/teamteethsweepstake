@@ -165,7 +165,7 @@ function createPrizeRules() {
       name: "Prize 5: Master of Chaos",
       prize: "TBC",
       summary:
-        "Awarded to the player whose two teams' matches have jointly produced the most goals for and against across the tournament.",
+        "Awarded to the player whose two teams' matches have jointly produced the most goals for and against, plus penalties won and conceded across the tournament. Penalty shootouts do not count.",
       complexity: "simple",
     },
     {
