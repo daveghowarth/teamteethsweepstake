@@ -156,7 +156,6 @@ const tabs = [
   { id: "rules", label: "Rules", icon: BookOpen },
   { id: "players", label: "Players", icon: Users },
   { id: "admin", label: "Enter Scores", icon: Shield },
-  { id: "sweepstake", label: "Sweepstake draw", icon: Trophy },
   { id: "settings", label: "Settings / Data", icon: Database },
 ];
 
@@ -1733,6 +1732,7 @@ function FixtureCard({ fixture }) {
           <p className="text-xs font-black uppercase text-cyan-200">
             {fixture.stage === "Group" ? `Group ${fixture.group}` : fixture.stage}
           </p>
+          <p className="mt-1 text-sm font-bold text-white/75">{getKickoffUk(fixture)} UK</p>
           <p className="mt-1 text-sm text-white/50">{fixture.venue}</p>
         </div>
         <span className={`rounded px-2 py-1 text-xs font-black ${played ? "bg-cyan-300 text-slate-950" : "bg-white/10 text-white/70"}`}>
