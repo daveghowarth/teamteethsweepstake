@@ -159,6 +159,30 @@ http://localhost:5173/sweepstake-admin
 
 Use this page to enter the 24 player names, choose each player's Pot A and Pot B teams, and upload an avatar/photo.
 
+## Password Protect The Public Site
+
+Because the app includes participant photos, the deployed Vercel site can be protected with a shared site password.
+
+The password is not stored in the React app. It is stored privately in Vercel as an environment variable:
+
+```text
+SITE_PASSWORD
+```
+
+To set it in Vercel:
+
+1. Open your Vercel project.
+2. Go to **Settings**.
+3. Go to **Environment Variables**.
+4. Add a new variable called `SITE_PASSWORD`.
+5. Put the shared site password in the value box.
+6. Save it for Production, Preview, and Development if Vercel asks.
+7. Redeploy the site.
+
+Visitors will see a password screen before the app loads. After the correct password is entered, the browser remembers access for about 30 days.
+
+This is separate from the admin password. `SITE_PASSWORD` lets people view the site. `ADMIN_PASSWORD` is still needed before admin changes can be published live.
+
 The uploaded photos are stored in your browser along with the rest of the tournament data. Use **Settings / Data** to export a JSON backup after adding the players.
 
 ### Using Google Sheets For Players
