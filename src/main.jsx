@@ -26,6 +26,27 @@ import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const STORAGE_KEY = "world-cup-2026-tournament-data";
 const PLAYER_COUNT = 24;
+const PLAYER_AVATAR_FILES = {
+  alisha: "/images/avatars/alisha.jpg",
+  charlotte: "/images/avatars/charlotte.jpg",
+  dani: "/images/avatars/dani.jpg",
+  dave: "/images/avatars/dave.jpg",
+  dominic: "/images/avatars/dominic.jpg",
+  farhia: "/images/avatars/farhia.jpg",
+  linsey: "/images/avatars/linsey.jpg",
+  louis: "/images/avatars/louis.jpg",
+  megan: "/images/avatars/megan.jpg",
+  melanie: "/images/avatars/melanie.jpg",
+  nuria: "/images/avatars/nuria.jpg",
+  phil: "/images/avatars/phil.jpg",
+  rachael: "/images/avatars/rachael.jpg",
+  rhian: "/images/avatars/rhian.jpg",
+  rob: "/images/avatars/rob.jpg",
+  satveer: "/images/avatars/satveer.jpg",
+  shivani: "/images/avatars/shivani.jpg",
+  tara: "/images/avatars/tara.jpg",
+  viv: "/images/avatars/viv.jpg",
+};
 
 const officialGroupTeams = {
   A: [
@@ -1298,9 +1319,17 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
   function updateParticipant(participantId, changes) {
     setTournament((current) => {
       const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(current));
-      const nextParticipants = getParticipants(current).map((participant) =>
-        participant.id === participantId ? { ...participant, ...changes } : participant
-      );
+      const nextParticipants = getParticipants(current).map((participant) => {
+        if (participant.id !== participantId) return participant;
+
+        const nextParticipant = { ...participant, ...changes };
+
+        return {
+          ...nextParticipant,
+          avatarUrl:
+            nextParticipant.avatarUrl || getDefaultAvatarUrlForName(nextParticipant.name),
+        };
+      });
 
       return addSweepstakeOwnersToTeams({
         ...baseTournament,
@@ -2000,15 +2029,34 @@ function getSelectedTeamIds(participants, key) {
 function ensureParticipantSlots(participants = []) {
   return Array.from({ length: PLAYER_COUNT }, (_, index) => {
     const existingParticipant = participants[index];
+    const name = existingParticipant?.name || "";
 
     return {
       id: existingParticipant?.id || `player-${index + 1}`,
-      name: existingParticipant?.name || "",
+      name,
       potATeamId: existingParticipant?.potATeamId || "",
       potBTeamId: existingParticipant?.potBTeamId || "",
-      avatarUrl: existingParticipant?.avatarUrl || "",
+      avatarUrl: existingParticipant?.avatarUrl || getDefaultAvatarUrlForName(name),
     };
   });
+}
+
+function getDefaultAvatarUrlForName(name = "") {
+  const normalisedName = normaliseAvatarLookupName(name);
+  if (!normalisedName) return "";
+
+  const [firstName] = normalisedName.split("-");
+
+  return PLAYER_AVATAR_FILES[normalisedName] || PLAYER_AVATAR_FILES[firstName] || "";
+}
+
+function normaliseAvatarLookupName(name = "") {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function getParticipantDisplayName(participant) {
