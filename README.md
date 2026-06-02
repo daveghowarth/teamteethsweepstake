@@ -171,14 +171,36 @@ Open the downloaded file in Google Sheets and fill in:
 name
 pot_a_team
 pot_b_team
+avatar_file
 ```
 
 Use team names such as:
 
 ```text
-Dave,Mexico,Belgium
-Sarah,Canada,Spain
+Dave,Mexico,Belgium,dave.jpg
+Sarah,Canada,Spain,sarah.png
 ```
+
+Put avatar photos in:
+
+```text
+public/images/avatars
+```
+
+For example:
+
+```text
+public/images/avatars/dave.jpg
+public/images/avatars/sarah.png
+```
+
+Then type only the filename in the spreadsheet:
+
+```text
+dave.jpg
+```
+
+Use simple filenames with no spaces, such as `dave.jpg` or `sarah-smith.png`.
 
 When finished in Google Sheets, choose **File > Download > Comma Separated Values (.csv)**.
 

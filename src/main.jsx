@@ -1237,7 +1237,15 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
 
   function exportPlayersCsv() {
     const csvRows = [
-      ["player_number", "name", "pot_a_team", "pot_b_team", "available_pot_a_teams", "available_pot_b_teams"],
+      [
+        "player_number",
+        "name",
+        "pot_a_team",
+        "pot_b_team",
+        "avatar_file",
+        "available_pot_a_teams",
+        "available_pot_b_teams",
+      ],
       ...participants.map((participant, index) => {
         const picks = getParticipantPicks(participant, tournament.teams);
 
@@ -1246,6 +1254,7 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
           participant.name,
           picks.potA?.name || "",
           picks.potB?.name || "",
+          getAvatarFileName(participant.avatarUrl),
           potATeams[index]?.name || "",
           potBTeams[index]?.name || "",
         ];
@@ -1374,7 +1383,8 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
           <p className="text-sm leading-6 text-white/65">
             Download the CSV template, open it in Google Sheets, fill in the player names and team
             names, then download it from Sheets as CSV and import it here. The template includes
-            the Pot A and Pot B country lists, and the import will reject duplicate countries.
+            the Pot A and Pot B country lists, supports avatar file names, and rejects duplicate
+            countries.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -2039,6 +2049,7 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
   const nameIndex = headers.indexOf("name");
   const potAIndex = headers.indexOf("pot_a_team");
   const potBIndex = headers.indexOf("pot_b_team");
+  const avatarIndex = headers.indexOf("avatar_file");
 
   if (nameIndex === -1 || potAIndex === -1 || potBIndex === -1) {
     throw new Error("The CSV must include columns called name, pot_a_team, and pot_b_team.");
@@ -2059,6 +2070,10 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
       const playerLabel = name || `Player ${index + 1}`;
       const potATeamId = findTeamIdFromCsvValue(row[potAIndex], potATeams, "Pot A");
       const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], potBTeams, "Pot B");
+      const avatarUrl =
+        avatarIndex === -1
+          ? existingParticipant.avatarUrl || ""
+          : getAvatarUrlFromCsvValue(row[avatarIndex], existingParticipant.avatarUrl);
 
       assertUniqueCsvPick(potATeamId, usedPotATeamIds, playerLabel, "Pot A", potATeams);
       assertUniqueCsvPick(potBTeamId, usedPotBTeamIds, playerLabel, "Pot B", potBTeams);
@@ -2069,9 +2084,24 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
         name,
         potATeamId,
         potBTeamId,
+        avatarUrl,
       };
     })
   );
+}
+
+function getAvatarFileName(avatarUrl = "") {
+  if (!avatarUrl || avatarUrl.startsWith("data:")) return "";
+  return avatarUrl.split("/").pop() || "";
+}
+
+function getAvatarUrlFromCsvValue(value, existingAvatarUrl = "") {
+  const fileName = value?.trim();
+
+  if (!fileName) return existingAvatarUrl || "";
+  if (fileName.startsWith("http") || fileName.startsWith("/")) return fileName;
+
+  return `/images/avatars/${fileName}`;
 }
 
 function assertUniqueCsvPick(teamId, usedTeamIds, playerLabel, potLabel, teams) {
