@@ -534,8 +534,8 @@ function AdminScores({ tournament, updateFixtureScore, updateFixtureStats }) {
         subtitle="Private admin-style page for updating match results, penalties, and cards. Changes save automatically."
       />
       <div className="rounded-lg border border-cyan-300/25 bg-cyan-300/10 p-4 text-sm font-semibold text-cyan-50">
-        Changes are only published to the live site when you enter the admin password and press
-        Save live site. Keep the admin page URL private.
+        Changes are only published to the live site when you press Save live site on the admin page.
+        Keep the admin page URL private.
       </div>
       <div className="glass-card flex flex-wrap gap-2 rounded-lg p-2 shadow-sm">
         {[
@@ -1408,7 +1408,6 @@ function SweepstakeAdmin({
 }) {
   const csvInputRef = React.useRef(null);
   const [adminSection, setAdminSection] = React.useState("players");
-  const [adminPassword, setAdminPassword] = React.useState("");
   const [liveStatus, setLiveStatus] = React.useState(null);
   const participants = getParticipants(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
@@ -1522,15 +1521,10 @@ function SweepstakeAdmin({
   }
 
   async function saveLiveTournament() {
-    if (!adminPassword.trim()) {
-      setLiveStatus({ type: "error", message: "Enter the admin password before saving live." });
-      return;
-    }
-
     setLiveStatus({ type: "loading", message: "Saving live site..." });
 
     try {
-      await saveLiveTournamentData(tournament, adminPassword);
+      await saveLiveTournamentData(tournament);
       setLiveStatus({ type: "success", message: "Saved. The public site now uses this data." });
     } catch (error) {
       setLiveStatus({
@@ -1577,30 +1571,20 @@ function SweepstakeAdmin({
 
       {isOnlineAdmin && (
         <Panel title="Live site publishing">
-          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-            <label className="block">
-              <span className="admin-label">Admin password</span>
-              <input
-                className="admin-input"
-                type="password"
-                value={adminPassword}
-                placeholder="Enter the password saved in Vercel"
-                onChange={(event) => setAdminPassword(event.target.value)}
-              />
-            </label>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="max-w-2xl text-sm leading-6 text-white/65">
+              Make your changes below, then press Save live site. The public site will then load the
+              updated players, picks, photos, fixtures, and scores from Supabase.
+            </p>
             <button
               type="button"
-              className="rounded-lg bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               onClick={saveLiveTournament}
               disabled={liveStatus?.type === "loading"}
             >
               {liveStatus?.type === "loading" ? "Saving..." : "Save live site"}
             </button>
           </div>
-          <p className="mt-3 text-sm leading-6 text-white/65">
-            Make your changes below, then press Save live site. The public site will then load the
-            updated players, picks, photos, fixtures, and scores from Supabase.
-          </p>
           {liveStatus && (
             <div
               className={`mt-4 rounded-lg border p-4 text-sm font-semibold ${
@@ -2046,12 +2030,11 @@ async function loadPublishedJsonFallback() {
   return response.json();
 }
 
-async function saveLiveTournamentData(tournament, adminPassword) {
+async function saveLiveTournamentData(tournament) {
   const response = await fetch("/api/tournament", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "x-admin-password": adminPassword,
     },
     body: JSON.stringify({ data: tournament }),
   });

@@ -181,7 +181,7 @@ To set it in Vercel:
 
 Visitors will see a password screen before the app loads. After the correct password is entered, the browser remembers access for about 30 days.
 
-This is separate from the admin password. `SITE_PASSWORD` lets people view the site. `ADMIN_PASSWORD` is still needed before admin changes can be published live.
+Once someone has entered the shared site password, the admin page can publish changes with the **Save live site** button. Keep the admin page URL private.
 
 The uploaded photos are stored in your browser along with the rest of the tournament data. Use **Settings / Data** to export a JSON backup after adding the players.
 
@@ -471,7 +471,6 @@ Add these environment variables in Vercel:
 ```text
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-ADMIN_PASSWORD=choose_a_private_password
 ```
 
 Do not put the service role key in React code, GitHub, or `.env.example`.
@@ -484,7 +483,7 @@ Then visit:
 https://your-vercel-url/sweepstake-admin
 ```
 
-Make edits, enter the admin password, and click **Save live site**.
+Make edits and click **Save live site**.
 
 ### Updating The Public Site Later
 

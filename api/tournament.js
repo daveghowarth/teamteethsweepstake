@@ -53,20 +53,6 @@ async function handleGet(response) {
 }
 
 async function handlePut(request, response) {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
-  if (!adminPassword) {
-    sendJson(response, 500, {
-      error: "Missing ADMIN_PASSWORD environment variable in Vercel.",
-    });
-    return;
-  }
-
-  if (request.headers["x-admin-password"] !== adminPassword) {
-    sendJson(response, 401, { error: "Incorrect admin password." });
-    return;
-  }
-
   const body = await readJsonBody(request);
 
   if (!body?.data?.teams || !body?.data?.fixtures) {
@@ -150,7 +136,7 @@ function readJsonBody(request) {
 function setCorsHeaders(response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Access-Control-Allow-Methods", "GET,PUT,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type,x-admin-password");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function sendJson(response, statusCode, body) {
