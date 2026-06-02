@@ -2037,7 +2037,7 @@ function resizeAvatarFile(file) {
       image.onerror = reject;
       image.onload = () => {
         const canvas = document.createElement("canvas");
-        const size = 256;
+        const size = 128;
         const shortestSide = Math.min(image.width, image.height);
         const sourceX = (image.width - shortestSide) / 2;
         const sourceY = (image.height - shortestSide) / 2;
@@ -2058,7 +2058,7 @@ function resizeAvatarFile(file) {
           size
         );
 
-        resolve(canvas.toDataURL("image/jpeg", 0.86));
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
       };
 
       image.src = reader.result;
