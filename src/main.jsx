@@ -1203,6 +1203,8 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
   const potATeams = getPotTeams(tournament.teams, "A");
   const potBTeams = getPotTeams(tournament.teams, "B");
   const completedPlayers = participants.filter((participant) => participant.name.trim()).length;
+  const selectedPotATeamIds = getSelectedTeamIds(participants, "potATeamId");
+  const selectedPotBTeamIds = getSelectedTeamIds(participants, "potBTeamId");
 
   function updateParticipant(participantId, changes) {
     setTournament((current) => {
@@ -1235,7 +1237,7 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
 
   function exportPlayersCsv() {
     const csvRows = [
-      ["player_number", "name", "pot_a_team", "pot_b_team"],
+      ["player_number", "name", "pot_a_team", "pot_b_team", "available_pot_a_teams", "available_pot_b_teams"],
       ...participants.map((participant, index) => {
         const picks = getParticipantPicks(participant, tournament.teams);
 
@@ -1244,6 +1246,8 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
           participant.name,
           picks.potA?.name || "",
           picks.potB?.name || "",
+          potATeams[index]?.name || "",
+          potBTeams[index]?.name || "",
         ];
       }),
     ];
@@ -1369,7 +1373,8 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
         <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
           <p className="text-sm leading-6 text-white/65">
             Download the CSV template, open it in Google Sheets, fill in the player names and team
-            names, then download it from Sheets as CSV and import it here.
+            names, then download it from Sheets as CSV and import it here. The template includes
+            the Pot A and Pot B country lists, and the import will reject duplicate countries.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -1419,12 +1424,14 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
                   label="Pot A team"
                   value={participant.potATeamId}
                   teams={potATeams}
+                  unavailableTeamIds={selectedPotATeamIds}
                   onChange={(value) => updateParticipant(participant.id, { potATeamId: value })}
                 />
                 <TeamSelect
                   label="Pot B team"
                   value={participant.potBTeamId}
                   teams={potBTeams}
+                  unavailableTeamIds={selectedPotBTeamIds}
                   onChange={(value) => updateParticipant(participant.id, { potBTeamId: value })}
                 />
               </div>
@@ -1458,7 +1465,7 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
   );
 }
 
-function TeamSelect({ label, value, teams, onChange }) {
+function TeamSelect({ label, value, teams, unavailableTeamIds, onChange }) {
   return (
     <label className="block">
       <span className="admin-label">{label}</span>
@@ -1468,11 +1475,16 @@ function TeamSelect({ label, value, teams, onChange }) {
         onChange={(event) => onChange(event.target.value)}
       >
         <option value="">Choose team</option>
-        {teams.map((team) => (
-          <option key={team.id} value={team.id}>
+        {teams.map((team) => {
+          const isUnavailable = unavailableTeamIds.has(team.id) && team.id !== value;
+
+          return (
+          <option key={team.id} value={team.id} disabled={isUnavailable}>
             {formatTeamSelectLabel(team)}
+            {isUnavailable ? " - already picked" : ""}
           </option>
-        ))}
+          );
+        })}
       </select>
     </label>
   );
@@ -1854,6 +1866,10 @@ function getParticipantPicks(participant, teams) {
   };
 }
 
+function getSelectedTeamIds(participants, key) {
+  return new Set(participants.map((participant) => participant[key]).filter(Boolean));
+}
+
 function ensureParticipantSlots(participants = []) {
   return Array.from({ length: PLAYER_COUNT }, (_, index) => {
     const existingParticipant = participants[index];
@@ -2030,14 +2046,22 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
 
   const existingParticipants = getParticipants(tournament);
   const teams = applyOfficialTeamNames(tournament).teams;
+  const potATeams = getPotTeams(teams, "A");
+  const potBTeams = getPotTeams(teams, "B");
   const importedRows = rows.slice(1, PLAYER_COUNT + 1);
+  const usedPotATeamIds = new Set();
+  const usedPotBTeamIds = new Set();
 
   return ensureParticipantSlots(
     importedRows.map((row, index) => {
       const existingParticipant = existingParticipants[index] || {};
       const name = row[nameIndex]?.trim() || "";
-      const potATeamId = findTeamIdFromCsvValue(row[potAIndex], teams);
-      const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], teams);
+      const playerLabel = name || `Player ${index + 1}`;
+      const potATeamId = findTeamIdFromCsvValue(row[potAIndex], potATeams, "Pot A");
+      const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], potBTeams, "Pot B");
+
+      assertUniqueCsvPick(potATeamId, usedPotATeamIds, playerLabel, "Pot A", potATeams);
+      assertUniqueCsvPick(potBTeamId, usedPotBTeamIds, playerLabel, "Pot B", potBTeams);
 
       return {
         ...existingParticipant,
@@ -2050,11 +2074,22 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
   );
 }
 
+function assertUniqueCsvPick(teamId, usedTeamIds, playerLabel, potLabel, teams) {
+  if (!teamId) return;
+
+  if (usedTeamIds.has(teamId)) {
+    const team = teams.find((candidate) => candidate.id === teamId);
+    throw new Error(`${team?.name || "That team"} appears more than once in ${potLabel}. Check ${playerLabel}'s row.`);
+  }
+
+  usedTeamIds.add(teamId);
+}
+
 function normaliseHeader(header) {
   return header.trim().toLowerCase().replaceAll(" ", "_");
 }
 
-function findTeamIdFromCsvValue(value, teams) {
+function findTeamIdFromCsvValue(value, teams, potLabel = "this pot") {
   const cleanedValue = normaliseTeamSearchValue(value);
   if (!cleanedValue) return "";
 
@@ -2073,7 +2108,7 @@ function findTeamIdFromCsvValue(value, teams) {
 
   if (partialTeam) return partialTeam.id;
 
-  throw new Error(`I could not match this team name from the CSV: "${value}".`);
+  throw new Error(`I could not match "${value}" to a team in ${potLabel}.`);
 }
 
 function normaliseTeamSearchValue(value = "") {
