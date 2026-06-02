@@ -14,6 +14,7 @@ import {
 import "./styles.css";
 import { createDefaultTournament } from "./data/defaultTournament";
 import { createOfficialFixtures } from "./data/officialFixtures.js";
+import { getTeamFlagUrl } from "./data/teamFlags.js";
 import {
   calculateDashboardStats,
   calculateGroupTables,
@@ -1205,15 +1206,18 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
   const completedPlayers = participants.filter((participant) => participant.name.trim()).length;
   const selectedPotATeamIds = getSelectedTeamIds(participants, "potATeamId");
   const selectedPotBTeamIds = getSelectedTeamIds(participants, "potBTeamId");
+  const selectedTeamIds = new Set([...selectedPotATeamIds, ...selectedPotBTeamIds]);
 
   function updateParticipant(participantId, changes) {
     setTournament((current) => {
+      const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(current));
       const nextParticipants = getParticipants(current).map((participant) =>
         participant.id === participantId ? { ...participant, ...changes } : participant
       );
 
       return addSweepstakeOwnersToTeams({
-        ...applyOfficialFixtureSchedule(applyOfficialTeamNames(current)),
+        ...baseTournament,
+        teams: applySweepstakePotAssignments(baseTournament.teams, nextParticipants),
         participants: nextParticipants,
         updatedAt: new Date().toISOString(),
       });
@@ -1274,13 +1278,16 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
         const rows = parseCsv(reader.result);
         const importedParticipants = mapPlayerCsvRowsToParticipants(rows, tournament);
 
-        setTournament((current) =>
-          addSweepstakeOwnersToTeams({
-            ...applyOfficialFixtureSchedule(applyOfficialTeamNames(current)),
+        setTournament((current) => {
+          const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(current));
+
+          return addSweepstakeOwnersToTeams({
+            ...baseTournament,
+            teams: applySweepstakePotAssignments(baseTournament.teams, importedParticipants),
             participants: importedParticipants,
             updatedAt: new Date().toISOString(),
-          })
-        );
+          });
+        });
 
         window.alert("Player list imported successfully.");
       } catch (error) {
@@ -1434,14 +1441,14 @@ function SweepstakeAdmin({ tournament, setTournament, isLocalSite, isOnlineAdmin
                   label="Pot A team"
                   value={participant.potATeamId}
                   teams={potATeams}
-                  unavailableTeamIds={selectedPotATeamIds}
+                  unavailableTeamIds={selectedTeamIds}
                   onChange={(value) => updateParticipant(participant.id, { potATeamId: value })}
                 />
                 <TeamSelect
                   label="Pot B team"
                   value={participant.potBTeamId}
                   teams={potBTeams}
-                  unavailableTeamIds={selectedPotBTeamIds}
+                  unavailableTeamIds={selectedTeamIds}
                   onChange={(value) => updateParticipant(participant.id, { potBTeamId: value })}
                 />
               </div>
@@ -1720,7 +1727,7 @@ function TeamMarker({ team, fallbackFlag }) {
           loading="lazy"
         />
         <span className="team-owner-marker-flag" aria-hidden="true">
-          {fallbackFlag}
+          <TeamFlag team={team} fallbackFlag={fallbackFlag} />
         </span>
       </span>
     );
@@ -1731,20 +1738,32 @@ function TeamMarker({ team, fallbackFlag }) {
 
 function TeamBadge({ team, fallbackFlag }) {
   const [imageFailed, setImageFailed] = React.useState(false);
+  const flagImageUrl = team?.logoUrl || team?.flagUrl;
 
-  if (team?.logoUrl) {
+  if (flagImageUrl) {
     return (
       <span className="team-badge">
         {imageFailed ? (
           <span aria-hidden="true">{fallbackFlag}</span>
         ) : (
-          <img src={team.logoUrl} alt="" onError={() => setImageFailed(true)} />
+          <img src={flagImageUrl} alt="" onError={() => setImageFailed(true)} />
         )}
       </span>
     );
   }
 
   return <span aria-hidden="true">{fallbackFlag}</span>;
+}
+
+function TeamFlag({ team, fallbackFlag }) {
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const flagImageUrl = team?.flagUrl || team?.logoUrl;
+
+  if (flagImageUrl && !imageFailed) {
+    return <img src={flagImageUrl} alt="" onError={() => setImageFailed(true)} />;
+  }
+
+  return <span>{fallbackFlag}</span>;
 }
 
 function isLocalEditableSite() {
@@ -1952,18 +1971,47 @@ function resizeAvatarFile(file) {
 }
 
 function getPotTeams(teams, pot) {
-  const groupStageTeams = teams.filter(
+  const groupStageTeams = getGroupStageTeams(teams);
+
+  const assignedPotTeams = groupStageTeams.filter((team) => team.sweepstakePot === pot);
+
+  if (assignedPotTeams.length > 0) {
+    return sortTeamsForPicker(assignedPotTeams);
+  }
+
+  const midpoint = PLAYER_COUNT;
+  const sortedTeams = sortTeamsForPicker(groupStageTeams);
+  const potTeams = pot === "A" ? sortedTeams.slice(0, midpoint) : sortedTeams.slice(midpoint);
+
+  return potTeams;
+}
+
+function getGroupStageTeams(teams) {
+  return teams.filter(
     (team) => /^[A-L]$/.test(team.group || "") && Number(team.seed) >= 1 && Number(team.seed) <= 4
   );
-  const midpoint = PLAYER_COUNT;
-  const sortedTeams = [...groupStageTeams].sort((teamA, teamB) =>
+}
+
+function applySweepstakePotAssignments(teams, participants) {
+  const potByTeamId = new Map();
+
+  for (const participant of participants) {
+    if (participant.potATeamId) potByTeamId.set(participant.potATeamId, "A");
+    if (participant.potBTeamId) potByTeamId.set(participant.potBTeamId, "B");
+  }
+
+  return teams.map((team) => ({
+    ...team,
+    sweepstakePot: potByTeamId.get(team.id) || team.sweepstakePot || null,
+  }));
+}
+
+function sortTeamsForPicker(teams) {
+  return [...teams].sort((teamA, teamB) =>
     `${teamA.group}-${teamA.seed || 99}-${teamA.name}`.localeCompare(
       `${teamB.group}-${teamB.seed || 99}-${teamB.name}`
     )
   );
-  const potTeams = pot === "A" ? sortedTeams.slice(0, midpoint) : sortedTeams.slice(midpoint);
-
-  return potTeams;
 }
 
 function formatTeamSelectLabel(team) {
@@ -2057,26 +2105,28 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
 
   const existingParticipants = getParticipants(tournament);
   const teams = applyOfficialTeamNames(tournament).teams;
-  const potATeams = getPotTeams(teams, "A");
-  const potBTeams = getPotTeams(teams, "B");
+  const groupStageTeams = getGroupStageTeams(teams);
   const importedRows = rows.slice(1, PLAYER_COUNT + 1);
   const usedPotATeamIds = new Set();
   const usedPotBTeamIds = new Set();
+  const usedTeamIds = new Set();
 
   return ensureParticipantSlots(
     importedRows.map((row, index) => {
       const existingParticipant = existingParticipants[index] || {};
       const name = row[nameIndex]?.trim() || "";
       const playerLabel = name || `Player ${index + 1}`;
-      const potATeamId = findTeamIdFromCsvValue(row[potAIndex], potATeams, "Pot A");
-      const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], potBTeams, "Pot B");
+      const potATeamId = findTeamIdFromCsvValue(row[potAIndex], groupStageTeams, "Pot A");
+      const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], groupStageTeams, "Pot B");
       const avatarUrl =
         avatarIndex === -1
           ? existingParticipant.avatarUrl || ""
           : getAvatarUrlFromCsvValue(row[avatarIndex], existingParticipant.avatarUrl);
 
-      assertUniqueCsvPick(potATeamId, usedPotATeamIds, playerLabel, "Pot A", potATeams);
-      assertUniqueCsvPick(potBTeamId, usedPotBTeamIds, playerLabel, "Pot B", potBTeams);
+      assertUniqueCsvPick(potATeamId, usedPotATeamIds, playerLabel, "Pot A", groupStageTeams);
+      assertUniqueCsvPick(potBTeamId, usedPotBTeamIds, playerLabel, "Pot B", groupStageTeams);
+      assertUniqueCsvPick(potATeamId, usedTeamIds, playerLabel, "the draw", groupStageTeams);
+      assertUniqueCsvPick(potBTeamId, usedTeamIds, playerLabel, "the draw", groupStageTeams);
 
       return {
         ...existingParticipant,
@@ -2164,8 +2214,9 @@ function applyOfficialTeamNames(tournament) {
     const shouldRename = /^Group [A-L] Team [1-4]$/.test(team.name || "");
     const nextName = shouldRename ? officialTeam.name : team.name;
     const nextFlag = officialTeam.flagEmoji;
+    const nextFlagUrl = getTeamFlagUrl(nextName);
 
-    if (nextName === team.name && nextFlag === team.flagEmoji) {
+    if (nextName === team.name && nextFlag === team.flagEmoji && nextFlagUrl === team.flagUrl) {
       return team;
     }
 
@@ -2174,6 +2225,7 @@ function applyOfficialTeamNames(tournament) {
       ...team,
       name: nextName,
       flagEmoji: nextFlag,
+      flagUrl: nextFlagUrl,
     };
   });
 

@@ -1,8 +1,8 @@
 {
   "name": "FIFA World Cup 2026",
   "version": 1,
-  "createdAt": "2026-05-31T22:32:38.451Z",
-  "updatedAt": "2026-05-31T22:32:38.452Z",
+  "createdAt": "2026-06-02T15:30:30.975Z",
+  "updatedAt": "2026-06-02T15:30:30.976Z",
   "groups": [
     "A",
     "B",
@@ -24,6 +24,7 @@
       "group": "A",
       "seed": 1,
       "flagEmoji": "🇲🇽",
+      "flagUrl": "https://flagcdn.com/w40/mx.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -32,6 +33,7 @@
       "group": "A",
       "seed": 2,
       "flagEmoji": "🇿🇦",
+      "flagUrl": "https://flagcdn.com/w40/za.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -40,6 +42,7 @@
       "group": "A",
       "seed": 3,
       "flagEmoji": "🇰🇷",
+      "flagUrl": "https://flagcdn.com/w40/kr.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -48,6 +51,7 @@
       "group": "A",
       "seed": 4,
       "flagEmoji": "🇨🇿",
+      "flagUrl": "https://flagcdn.com/w40/cz.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -56,6 +60,7 @@
       "group": "B",
       "seed": 1,
       "flagEmoji": "🇨🇦",
+      "flagUrl": "https://flagcdn.com/w40/ca.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -64,6 +69,7 @@
       "group": "B",
       "seed": 2,
       "flagEmoji": "🇧🇦",
+      "flagUrl": "https://flagcdn.com/w40/ba.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -72,6 +78,7 @@
       "group": "B",
       "seed": 3,
       "flagEmoji": "🇶🇦",
+      "flagUrl": "https://flagcdn.com/w40/qa.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -80,6 +87,7 @@
       "group": "B",
       "seed": 4,
       "flagEmoji": "🇨🇭",
+      "flagUrl": "https://flagcdn.com/w40/ch.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -88,6 +96,7 @@
       "group": "C",
       "seed": 1,
       "flagEmoji": "🇧🇷",
+      "flagUrl": "https://flagcdn.com/w40/br.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -96,6 +105,7 @@
       "group": "C",
       "seed": 2,
       "flagEmoji": "🇲🇦",
+      "flagUrl": "https://flagcdn.com/w40/ma.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -104,6 +114,7 @@
       "group": "C",
       "seed": 3,
       "flagEmoji": "🇭🇹",
+      "flagUrl": "https://flagcdn.com/w40/ht.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -112,6 +123,7 @@
       "group": "C",
       "seed": 4,
       "flagEmoji": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+      "flagUrl": "https://flagcdn.com/w40/gb-sct.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -120,6 +132,7 @@
       "group": "D",
       "seed": 1,
       "flagEmoji": "🇺🇸",
+      "flagUrl": "https://flagcdn.com/w40/us.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -128,6 +141,7 @@
       "group": "D",
       "seed": 2,
       "flagEmoji": "🇵🇾",
+      "flagUrl": "https://flagcdn.com/w40/py.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -136,6 +150,7 @@
       "group": "D",
       "seed": 3,
       "flagEmoji": "🇦🇺",
+      "flagUrl": "https://flagcdn.com/w40/au.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -144,6 +159,7 @@
       "group": "D",
       "seed": 4,
       "flagEmoji": "🇹🇷",
+      "flagUrl": "https://flagcdn.com/w40/tr.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -152,6 +168,7 @@
       "group": "E",
       "seed": 1,
       "flagEmoji": "🇩🇪",
+      "flagUrl": "https://flagcdn.com/w40/de.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -160,6 +177,7 @@
       "group": "E",
       "seed": 2,
       "flagEmoji": "🇨🇼",
+      "flagUrl": "https://flagcdn.com/w40/cw.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -168,6 +186,7 @@
       "group": "E",
       "seed": 3,
       "flagEmoji": "🇨🇮",
+      "flagUrl": "https://flagcdn.com/w40/ci.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -176,6 +195,7 @@
       "group": "E",
       "seed": 4,
       "flagEmoji": "🇪🇨",
+      "flagUrl": "https://flagcdn.com/w40/ec.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -184,6 +204,7 @@
       "group": "F",
       "seed": 1,
       "flagEmoji": "🇳🇱",
+      "flagUrl": "https://flagcdn.com/w40/nl.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -192,6 +213,7 @@
       "group": "F",
       "seed": 2,
       "flagEmoji": "🇯🇵",
+      "flagUrl": "https://flagcdn.com/w40/jp.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -200,6 +222,7 @@
       "group": "F",
       "seed": 3,
       "flagEmoji": "🇹🇳",
+      "flagUrl": "https://flagcdn.com/w40/tn.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -208,6 +231,7 @@
       "group": "F",
       "seed": 4,
       "flagEmoji": "🇸🇪",
+      "flagUrl": "https://flagcdn.com/w40/se.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -216,6 +240,7 @@
       "group": "G",
       "seed": 1,
       "flagEmoji": "🇧🇪",
+      "flagUrl": "https://flagcdn.com/w40/be.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -224,6 +249,7 @@
       "group": "G",
       "seed": 2,
       "flagEmoji": "🇪🇬",
+      "flagUrl": "https://flagcdn.com/w40/eg.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -232,6 +258,7 @@
       "group": "G",
       "seed": 3,
       "flagEmoji": "🇮🇷",
+      "flagUrl": "https://flagcdn.com/w40/ir.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -240,6 +267,7 @@
       "group": "G",
       "seed": 4,
       "flagEmoji": "🇳🇿",
+      "flagUrl": "https://flagcdn.com/w40/nz.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -248,6 +276,7 @@
       "group": "H",
       "seed": 1,
       "flagEmoji": "🇪🇸",
+      "flagUrl": "https://flagcdn.com/w40/es.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -256,6 +285,7 @@
       "group": "H",
       "seed": 2,
       "flagEmoji": "🇨🇻",
+      "flagUrl": "https://flagcdn.com/w40/cv.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -264,6 +294,7 @@
       "group": "H",
       "seed": 3,
       "flagEmoji": "🇸🇦",
+      "flagUrl": "https://flagcdn.com/w40/sa.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -272,6 +303,7 @@
       "group": "H",
       "seed": 4,
       "flagEmoji": "🇺🇾",
+      "flagUrl": "https://flagcdn.com/w40/uy.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -280,6 +312,7 @@
       "group": "I",
       "seed": 1,
       "flagEmoji": "🇫🇷",
+      "flagUrl": "https://flagcdn.com/w40/fr.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -288,6 +321,7 @@
       "group": "I",
       "seed": 2,
       "flagEmoji": "🇸🇳",
+      "flagUrl": "https://flagcdn.com/w40/sn.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -296,6 +330,7 @@
       "group": "I",
       "seed": 3,
       "flagEmoji": "🇳🇴",
+      "flagUrl": "https://flagcdn.com/w40/no.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -304,6 +339,7 @@
       "group": "I",
       "seed": 4,
       "flagEmoji": "🇮🇶",
+      "flagUrl": "https://flagcdn.com/w40/iq.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -312,6 +348,7 @@
       "group": "J",
       "seed": 1,
       "flagEmoji": "🇦🇷",
+      "flagUrl": "https://flagcdn.com/w40/ar.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -320,6 +357,7 @@
       "group": "J",
       "seed": 2,
       "flagEmoji": "🇩🇿",
+      "flagUrl": "https://flagcdn.com/w40/dz.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -328,6 +366,7 @@
       "group": "J",
       "seed": 3,
       "flagEmoji": "🇦🇹",
+      "flagUrl": "https://flagcdn.com/w40/at.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -336,6 +375,7 @@
       "group": "J",
       "seed": 4,
       "flagEmoji": "🇯🇴",
+      "flagUrl": "https://flagcdn.com/w40/jo.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -344,6 +384,7 @@
       "group": "K",
       "seed": 1,
       "flagEmoji": "🇵🇹",
+      "flagUrl": "https://flagcdn.com/w40/pt.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -352,6 +393,7 @@
       "group": "K",
       "seed": 2,
       "flagEmoji": "🇺🇿",
+      "flagUrl": "https://flagcdn.com/w40/uz.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -360,6 +402,7 @@
       "group": "K",
       "seed": 3,
       "flagEmoji": "🇨🇴",
+      "flagUrl": "https://flagcdn.com/w40/co.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -368,6 +411,7 @@
       "group": "K",
       "seed": 4,
       "flagEmoji": "🇨🇩",
+      "flagUrl": "https://flagcdn.com/w40/cd.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -376,6 +420,7 @@
       "group": "L",
       "seed": 1,
       "flagEmoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+      "flagUrl": "https://flagcdn.com/w40/gb-eng.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -384,6 +429,7 @@
       "group": "L",
       "seed": 2,
       "flagEmoji": "🇭🇷",
+      "flagUrl": "https://flagcdn.com/w40/hr.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -392,6 +438,7 @@
       "group": "L",
       "seed": 3,
       "flagEmoji": "🇬🇭",
+      "flagUrl": "https://flagcdn.com/w40/gh.png",
       "sweepstakeOwner": "Not drawn yet"
     },
     {
@@ -400,6 +447,7 @@
       "group": "L",
       "seed": 4,
       "flagEmoji": "🇵🇦",
+      "flagUrl": "https://flagcdn.com/w40/pa.png",
       "sweepstakeOwner": "Not drawn yet"
     }
   ],
@@ -2103,5 +2151,5 @@
       "potBTeamId": "H4"
     }
   ],
-  "publishedAt": "2026-05-31T22:32:38.453Z"
+  "publishedAt": "2026-06-02T15:30:30.976Z"
 }

@@ -1,4 +1,5 @@
 import { createOfficialFixtures } from "./officialFixtures.js";
+import { getTeamFlagUrl } from "./teamFlags.js";
 
 const groups = "ABCDEFGHIJKL".split("");
 
@@ -106,6 +107,7 @@ function createPlaceholderTeams() {
         group,
         seed,
         flagEmoji: team.flagEmoji,
+        flagUrl: getTeamFlagUrl(team.name),
         sweepstakeOwner: "Not drawn yet",
       };
     })
