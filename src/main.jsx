@@ -22,6 +22,7 @@ import {
   getFixturesByStage,
   getQualifiedTeams,
 } from "./utils/tournament";
+import { generatePdfReport } from "./utils/pdfReports.js";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const STORAGE_KEY = "world-cup-2026-tournament-data";
@@ -1601,6 +1602,8 @@ function SweepstakeAdmin({
         </Panel>
       )}
 
+      <PdfReportsPanel tournament={tournament} />
+
       {adminSection === "players" && (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -2249,6 +2252,56 @@ function sortTeamsForPicker(teams) {
   return [...teams].sort((teamA, teamB) =>
     getTeamSweepstakePotRank(teamA.name) - getTeamSweepstakePotRank(teamB.name) ||
     teamA.name.localeCompare(teamB.name)
+  );
+}
+
+function PdfReportsPanel({ tournament }) {
+  const [activeReport, setActiveReport] = React.useState(null);
+  const reportOptions = [
+    ["picks", "Pot A/B picks", "A3 landscape list of all teams and who picked them."],
+    ["fixtures", "Next 24 matches", "A3 landscape fixture sheet with participant photos and flags."],
+    ["tables", "Group tables", "A3 landscape snapshot of all current group tables."],
+    ["bracket", "Knockout bracket", "A3 landscape knockout bracket view."],
+  ];
+
+  async function downloadReport(reportType) {
+    setActiveReport(reportType);
+
+    try {
+      await generatePdfReport(tournament, reportType);
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "That PDF could not be created. Please try again."
+      );
+    } finally {
+      setActiveReport(null);
+    }
+  }
+
+  return (
+    <Panel title="PDF reports">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {reportOptions.map(([reportType, title, description]) => (
+          <button
+            key={reportType}
+            type="button"
+            onClick={() => downloadReport(reportType)}
+            disabled={activeReport !== null}
+            className="glass-card rounded-lg p-4 text-left transition hover:-translate-y-1 hover:bg-white/12 disabled:cursor-wait disabled:opacity-60"
+          >
+            <span className="block text-sm font-black text-cyan-200">
+              {activeReport === reportType ? "Preparing PDF..." : title}
+            </span>
+            <span className="mt-2 block text-sm leading-5 text-white/62">{description}</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-sm leading-6 text-white/55">
+        PDFs are designed as A3 landscape pages with the banner, background image, and matchday styling.
+      </p>
+    </Panel>
   );
 }
 
