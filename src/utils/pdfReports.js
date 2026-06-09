@@ -2,6 +2,8 @@ import { calculateGroupTables, getFixturesByStage } from "./tournament.js";
 
 const WIDTH = 1754;
 const HEIGHT = 1240;
+const EMAIL_WIDTH = 1200;
+const EMAIL_HEIGHT = 848;
 const PDF_WIDTH = 1190.55;
 const PDF_HEIGHT = 841.89;
 const BANNER_URL = "/images/banner3-desktop.jpg";
@@ -15,6 +17,26 @@ const reportTitles = {
 };
 
 export async function generatePdfReport(tournament, reportType) {
+  const canvas = await renderReportCanvas(tournament, reportType);
+  const jpegBlob = await canvasToBlob(canvas, "image/jpeg", 0.92);
+  const pdfBlob = await createPdfFromJpeg(jpegBlob, canvas.width, canvas.height);
+  downloadBlob(pdfBlob, `team-teeth-${reportType}-report.pdf`);
+}
+
+export async function generateEmailJpegReport(tournament, reportType) {
+  const canvas = await renderReportCanvas(tournament, reportType);
+  const emailCanvas = document.createElement("canvas");
+  emailCanvas.width = EMAIL_WIDTH;
+  emailCanvas.height = EMAIL_HEIGHT;
+
+  const context = emailCanvas.getContext("2d");
+  context.drawImage(canvas, 0, 0, emailCanvas.width, emailCanvas.height);
+
+  const jpegBlob = await canvasToBlob(emailCanvas, "image/jpeg", 0.78);
+  downloadBlob(jpegBlob, `team-teeth-${reportType}-email.jpg`);
+}
+
+async function renderReportCanvas(tournament, reportType) {
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
@@ -35,9 +57,7 @@ export async function generatePdfReport(tournament, reportType) {
     await drawBracketReport(context, tournament, helpers);
   }
 
-  const jpegBlob = await canvasToBlob(canvas, "image/jpeg", 0.92);
-  const pdfBlob = await createPdfFromJpeg(jpegBlob, canvas.width, canvas.height);
-  downloadBlob(pdfBlob, `team-teeth-${reportType}-report.pdf`);
+  return canvas;
 }
 
 async function drawReportBase(context, imageCache, title) {

@@ -22,7 +22,7 @@ import {
   getFixturesByStage,
   getQualifiedTeams,
 } from "./utils/tournament";
-import { generatePdfReport } from "./utils/pdfReports.js";
+import { generateEmailJpegReport, generatePdfReport } from "./utils/pdfReports.js";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const STORAGE_KEY = "world-cup-2026-tournament-data";
@@ -2264,16 +2264,20 @@ function PdfReportsPanel({ tournament }) {
     ["bracket", "Knockout bracket", "A3 landscape knockout bracket view."],
   ];
 
-  async function downloadReport(reportType) {
-    setActiveReport(reportType);
+  async function downloadReport(reportType, format) {
+    setActiveReport(`${reportType}-${format}`);
 
     try {
-      await generatePdfReport(tournament, reportType);
+      if (format === "jpg") {
+        await generateEmailJpegReport(tournament, reportType);
+      } else {
+        await generatePdfReport(tournament, reportType);
+      }
     } catch (error) {
       window.alert(
         error instanceof Error
           ? error.message
-          : "That PDF could not be created. Please try again."
+          : "That report could not be created. Please try again."
       );
     } finally {
       setActiveReport(null);
@@ -2281,25 +2285,37 @@ function PdfReportsPanel({ tournament }) {
   }
 
   return (
-    <Panel title="PDF reports">
+    <Panel title="Downloadable reports">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {reportOptions.map(([reportType, title, description]) => (
-          <button
-            key={reportType}
-            type="button"
-            onClick={() => downloadReport(reportType)}
-            disabled={activeReport !== null}
-            className="glass-card rounded-lg p-4 text-left transition hover:-translate-y-1 hover:bg-white/12 disabled:cursor-wait disabled:opacity-60"
-          >
+          <div key={reportType} className="glass-card rounded-lg p-4">
             <span className="block text-sm font-black text-cyan-200">
-              {activeReport === reportType ? "Preparing PDF..." : title}
+              {activeReport?.startsWith(reportType) ? "Preparing report..." : title}
             </span>
             <span className="mt-2 block text-sm leading-5 text-white/62">{description}</span>
-          </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => downloadReport(reportType, "pdf")}
+                disabled={activeReport !== null}
+                className="rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadReport(reportType, "jpg")}
+                disabled={activeReport !== null}
+                className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
+              >
+                Email JPEG
+              </button>
+            </div>
+          </div>
         ))}
       </div>
       <p className="mt-3 text-sm leading-6 text-white/55">
-        PDFs are designed as A3 landscape pages with the banner, background image, and matchday styling.
+        PDFs are A3 landscape. Email JPEGs are lower-resolution landscape images, sized to sit neatly inside an email body.
       </p>
     </Panel>
   );
