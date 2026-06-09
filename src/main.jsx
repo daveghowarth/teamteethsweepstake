@@ -2115,16 +2115,7 @@ function getPrizeRules(tournament) {
   const hasCurrentRules = tournament.prizeRules.some((rule) => rule.id === "master-of-chaos");
   if (!hasCurrentRules) return defaultRules;
 
-  const savedRulesById = new Map(tournament.prizeRules.map((rule) => [rule.id, rule]));
-
-  return defaultRules.map((defaultRule) => {
-    const savedRule = savedRulesById.get(defaultRule.id);
-
-    return {
-      ...defaultRule,
-      prize: savedRule?.prize ?? defaultRule.prize,
-    };
-  });
+  return defaultRules;
 }
 
 function getParticipants(tournament) {
