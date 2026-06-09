@@ -153,7 +153,7 @@ const prizeIconPaths = {
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "fixtures", label: "Fixtures and scores", icon: CalendarDays },
-  { id: "rules", label: "Rules", icon: BookOpen },
+  { id: "rules", label: "Rules and prizes", icon: BookOpen },
   { id: "players", label: "Players", icon: Users },
   { id: "admin", label: "Enter Scores", icon: Shield },
   { id: "settings", label: "Settings / Data", icon: Database },
