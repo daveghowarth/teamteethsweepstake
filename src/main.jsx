@@ -595,7 +595,7 @@ function RulesPage({ tournament }) {
   return (
     <div className="space-y-6">
       <SectionTitle
-        title="Rules"
+        title="Rules and Prizes"
         subtitle="The sweepstake prize structure. The amounts and wording are editable in the starter data."
       />
       <div className="grid gap-4 lg:grid-cols-2">

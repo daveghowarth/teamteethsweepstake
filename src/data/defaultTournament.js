@@ -121,21 +121,21 @@ function createPrizeRules() {
     {
       id: "winner",
       name: "Prize 1: World Cup winner",
-      prize: "TBC",
+      prize: "£50",
       summary: "Awarded to the participant who picked the team that wins the World Cup.",
       complexity: "simple",
     },
     {
       id: "runner-up",
       name: "Prize 2: Runner-up",
-      prize: "TBC",
+      prize: "£25",
       summary: "Awarded to the participant who picked the losing finalist.",
       complexity: "simple",
     },
     {
       id: "best-pot-b",
       name: "Prize 3: Best Pot B team",
-      prize: "TBC",
+      prize: "£15",
       summary: "Awarded to the participant whose Pot B team has the most successful tournament.",
       complexity: "table",
       tableColumns: ["Rank factor", "How it is decided"],
@@ -149,7 +149,7 @@ function createPrizeRules() {
     {
       id: "biggest-loser",
       name: "Prize 4: Biggest loser",
-      prize: "TBC",
+      prize: "£10",
       summary: "Awarded to the participant who picked the worst performing team.",
       complexity: "table",
       tableColumns: ["Rank factor", "How it is decided"],
@@ -163,7 +163,7 @@ function createPrizeRules() {
     {
       id: "master-of-chaos",
       name: "Prize 5: Master of Chaos",
-      prize: "TBC",
+      prize: "£10",
       summary:
         "Awarded to the player whose two teams' matches have jointly produced the most goals for and against, plus penalties won and conceded across the tournament. Penalty shootouts do not count.",
       complexity: "simple",
@@ -171,7 +171,7 @@ function createPrizeRules() {
     {
       id: "dirtiest-player",
       name: "Prize 6: Dirtiest player",
-      prize: "TBC",
+      prize: "£10",
       summary:
         "Awarded to the player whose two teams jointly accumulate the most disciplinary points across the tournament. Yellow cards score 1 point and red cards score 2 points.",
       complexity: "simple",

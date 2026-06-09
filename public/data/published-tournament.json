@@ -1,8 +1,8 @@
 {
   "name": "FIFA World Cup 2026",
   "version": 1,
-  "createdAt": "2026-06-02T16:41:49.439Z",
-  "updatedAt": "2026-06-02T16:41:49.439Z",
+  "createdAt": "2026-06-09T12:35:05.115Z",
+  "updatedAt": "2026-06-09T12:35:05.115Z",
   "groups": [
     "A",
     "B",
@@ -2481,21 +2481,21 @@
     {
       "id": "winner",
       "name": "Prize 1: World Cup winner",
-      "prize": "TBC",
+      "prize": "£50",
       "summary": "Awarded to the participant who picked the team that wins the World Cup.",
       "complexity": "simple"
     },
     {
       "id": "runner-up",
       "name": "Prize 2: Runner-up",
-      "prize": "TBC",
+      "prize": "£25",
       "summary": "Awarded to the participant who picked the losing finalist.",
       "complexity": "simple"
     },
     {
       "id": "best-pot-b",
       "name": "Prize 3: Best Pot B team",
-      "prize": "TBC",
+      "prize": "£15",
       "summary": "Awarded to the participant whose Pot B team has the most successful tournament.",
       "complexity": "table",
       "tableColumns": [
@@ -2524,7 +2524,7 @@
     {
       "id": "biggest-loser",
       "name": "Prize 4: Biggest loser",
-      "prize": "TBC",
+      "prize": "£10",
       "summary": "Awarded to the participant who picked the worst performing team.",
       "complexity": "table",
       "tableColumns": [
@@ -2553,14 +2553,14 @@
     {
       "id": "master-of-chaos",
       "name": "Prize 5: Master of Chaos",
-      "prize": "TBC",
+      "prize": "£10",
       "summary": "Awarded to the player whose two teams' matches have jointly produced the most goals for and against, plus penalties won and conceded across the tournament. Penalty shootouts do not count.",
       "complexity": "simple"
     },
     {
       "id": "dirtiest-player",
       "name": "Prize 6: Dirtiest player",
-      "prize": "TBC",
+      "prize": "£10",
       "summary": "Awarded to the player whose two teams jointly accumulate the most disciplinary points across the tournament. Yellow cards score 1 point and red cards score 2 points.",
       "complexity": "simple"
     }
@@ -2615,5 +2615,5 @@
       "potBTeamId": "H4"
     }
   ],
-  "publishedAt": "2026-06-02T16:41:49.439Z"
+  "publishedAt": "2026-06-09T12:35:05.116Z"
 }
