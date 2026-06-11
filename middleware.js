@@ -2,7 +2,7 @@ const AUTH_COOKIE = "team_teeth_site_auth";
 const LOGIN_PATH = "/site-login";
 
 export const config = {
-  matcher: ["/((?!_vercel|favicon.ico).*)"],
+  matcher: ["/((?!api|_vercel|favicon.ico).*)"],
 };
 
 export default async function middleware(request) {

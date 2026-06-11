@@ -471,6 +471,7 @@ Add these environment variables in Vercel:
 ```text
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+CRON_SECRET=choose_a_private_random_cron_secret
 ```
 
 Do not put the service role key in React code, GitHub, or `.env.example`.
@@ -484,6 +485,24 @@ https://your-vercel-url/sweepstake-admin
 ```
 
 Make edits and click **Save live site**.
+
+## Automatic FIFA Score Sync
+
+The deployed Vercel site includes a scheduled job that runs once per hour:
+
+```text
+/api/cron/sync-fifa
+```
+
+This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically.
+
+Set `CRON_SECRET` in Vercel to a private random value. Vercel Cron will use it to call the scheduled endpoint securely.
+
+Cards and penalties are not included in FIFA's calendar feed, so those still need to be entered manually on:
+
+```text
+/sweepstake-admin
+```
 
 ### Updating The Public Site Later
 
