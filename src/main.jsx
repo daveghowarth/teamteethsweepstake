@@ -1410,6 +1410,7 @@ function SweepstakeAdmin({
   const csvInputRef = React.useRef(null);
   const [adminSection, setAdminSection] = React.useState("players");
   const [liveStatus, setLiveStatus] = React.useState(null);
+  const [syncStatus, setSyncStatus] = React.useState(null);
   const participants = getParticipants(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
   const potBTeams = getPotTeams(tournament.teams, "B");
@@ -1535,6 +1536,36 @@ function SweepstakeAdmin({
     }
   }
 
+  async function syncFifaFixtures() {
+    setSyncStatus({ type: "loading", message: "Syncing fixtures and scores from FIFA..." });
+
+    try {
+      const response = await fetch("/api/fifa/sync");
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "FIFA sync failed.");
+      }
+
+      const syncedFixtures = Array.isArray(payload.fixtures) ? payload.fixtures : [];
+
+      if (syncedFixtures.length === 0) {
+        throw new Error("FIFA returned no fixtures for this tournament.");
+      }
+
+      setTournament((current) => mapFifaDataToTournament(current, syncedFixtures, payload));
+      setSyncStatus({
+        type: "success",
+        message: `Synced ${syncedFixtures.length} fixtures from FIFA. Press Save live site to publish them.`,
+      });
+    } catch (error) {
+      setSyncStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Could not sync from FIFA.",
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1601,6 +1632,36 @@ function SweepstakeAdmin({
           )}
         </Panel>
       )}
+
+      <Panel title="Fixture and score sync">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-2xl text-sm leading-6 text-white/65">
+            Pull the latest fixture dates, UK kickoff times, teams, and available scores from FIFA.
+            Cards and penalties still need to be entered manually.
+          </p>
+          <button
+            type="button"
+            className="rounded-lg bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
+            onClick={syncFifaFixtures}
+            disabled={syncStatus?.type === "loading"}
+          >
+            {syncStatus?.type === "loading" ? "Syncing..." : "Sync from FIFA"}
+          </button>
+        </div>
+        {syncStatus && (
+          <div
+            className={`mt-4 rounded-lg border p-4 text-sm font-semibold ${
+              syncStatus.type === "success"
+                ? "border-green-300/30 bg-green-300/10 text-green-100"
+                : syncStatus.type === "error"
+                  ? "border-red-300/30 bg-red-300/10 text-red-100"
+                  : "border-white/12 bg-white/10 text-white/80"
+            }`}
+          >
+            {syncStatus.message}
+          </div>
+        )}
+      </Panel>
 
       <PdfReportsPanel tournament={tournament} />
 
@@ -2597,7 +2658,7 @@ function hasOutdatedFixtureSchedule(tournament) {
     firstFixture?.homeTeamName !== "Mexico" ||
     firstFixture?.awayTeamName !== "South Africa" ||
     firstFixture?.date !== "2026-06-11" ||
-    firstFixture?.kickoffUk !== "21:00"
+    firstFixture?.kickoffUk !== "20:00"
   );
 }
 
@@ -3415,7 +3476,9 @@ function getFlagEmojiFromCountryCode(countryCode = "") {
 }
 
 function normaliseApiScore(score) {
-  return typeof score === "number" ? score : null;
+  if (score === null || score === undefined || score === "") return null;
+  const numberScore = Number(score);
+  return Number.isNaN(numberScore) ? null : numberScore;
 }
 
 function normaliseSportsDbScore(score) {
