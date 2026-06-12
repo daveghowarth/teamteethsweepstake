@@ -11,7 +11,7 @@ export async function fetchApiFootballFixturesWithEvents() {
 
     if (discoveryResult?.fixtures?.length) {
       fixturesPayload = discoveryResult.payload;
-      const fixturesWithEvents = await addEventsToPlayedFixtures(discoveryResult.fixtures, config);
+      const fixturesWithEvents = await addDetailsToPlayedFixtures(discoveryResult.fixtures, config);
 
       return {
         source: "api-football",
@@ -42,12 +42,15 @@ export async function fetchApiFootballFixturesWithEvents() {
         results: 0,
         eventFixtureCount: 0,
         errors: fixturesPayload.errors || null,
+        requestUrl: fixturesPayload.requestUrl || null,
+        firstRequestUrl: fixturesPayload.firstRequestUrl || null,
+        firstResults: fixturesPayload.firstResults ?? null,
         diagnostics,
       },
     };
   }
 
-  const fixturesWithEvents = await addEventsToPlayedFixtures(fixtures, config);
+  const fixturesWithEvents = await addDetailsToPlayedFixtures(fixtures, config);
 
   return {
     source: "api-football",
@@ -59,6 +62,7 @@ export async function fetchApiFootballFixturesWithEvents() {
       results: fixturesWithEvents.length,
       eventFixtureCount: fixturesWithEvents.filter((fixture) => Array.isArray(fixture.events)).length,
       errors: fixturesPayload.errors || null,
+      requestUrl: fixturesPayload.requestUrl || null,
     },
   };
 }
@@ -127,32 +131,40 @@ export function mergeApiFootballEventsIntoTournament(tournament, apiPayload) {
   };
 }
 
-async function addEventsToPlayedFixtures(fixtures, config) {
+async function addDetailsToPlayedFixtures(fixtures, config) {
   const playedFixtures = fixtures.filter(shouldFetchEventsForFixture);
+  const detailsByFixtureId = new Map();
 
-  return Promise.all(
-    fixtures.map(async (fixture) => {
-      if (!playedFixtures.includes(fixture)) return fixture;
+  for (const batch of chunkArray(playedFixtures, 20)) {
+    const fixtureIds = batch.map((fixture) => fixture.fixture?.id).filter(Boolean).join("-");
+    if (!fixtureIds) continue;
 
-      const eventsUrl = new URL("/fixtures/events", config.baseUrl);
-      eventsUrl.searchParams.set("fixture", String(fixture.fixture.id));
+    const detailsUrl = new URL("/fixtures", config.baseUrl);
+    detailsUrl.searchParams.set("ids", fixtureIds);
 
-      try {
-        const eventsPayload = await requestApiFootball(eventsUrl, config.apiKey);
-        return {
-          ...fixture,
-          events: Array.isArray(eventsPayload.response) ? eventsPayload.response : [],
-          eventsError: eventsPayload.errors || null,
-        };
-      } catch (error) {
-        return {
+    try {
+      const detailsPayload = await requestApiFootball(detailsUrl, config.apiKey);
+
+      for (const detailedFixture of detailsPayload.response || []) {
+        if (detailedFixture.fixture?.id) {
+          detailsByFixtureId.set(detailedFixture.fixture.id, detailedFixture);
+        }
+      }
+    } catch (error) {
+      for (const fixture of batch) {
+        detailsByFixtureId.set(fixture.fixture?.id, {
           ...fixture,
           events: [],
           eventsError: error instanceof Error ? error.message : String(error),
-        };
+        });
       }
-    })
-  );
+    }
+  }
+
+  return fixtures.map((fixture) => {
+    const detailedFixture = detailsByFixtureId.get(fixture.fixture?.id);
+    return detailedFixture ? { ...fixture, ...detailedFixture } : fixture;
+  });
 }
 
 async function fetchFixturesForLeague(config, leagueId) {
@@ -162,7 +174,28 @@ async function fetchFixturesForLeague(config, leagueId) {
   fixturesUrl.searchParams.set("season", config.season);
   fixturesUrl.searchParams.set("timezone", "Europe/London");
 
-  return requestApiFootball(fixturesUrl, config.apiKey);
+  const payload = await requestApiFootball(fixturesUrl, config.apiKey);
+  const fixtures = Array.isArray(payload.response) ? payload.response : [];
+
+  if (fixtures.length) {
+    return {
+      ...payload,
+      requestUrl: fixturesUrl.toString(),
+    };
+  }
+
+  const plainFixturesUrl = new URL("/fixtures", config.baseUrl);
+  plainFixturesUrl.searchParams.set("league", leagueId);
+  plainFixturesUrl.searchParams.set("season", config.season);
+
+  const plainPayload = await requestApiFootball(plainFixturesUrl, config.apiKey);
+
+  return {
+    ...plainPayload,
+    requestUrl: plainFixturesUrl.toString(),
+    firstRequestUrl: fixturesUrl.toString(),
+    firstResults: payload.results || 0,
+  };
 }
 
 async function tryDiscoverWorldCupFixtures(config) {
@@ -281,6 +314,16 @@ function shouldFetchEventsForFixture(apiFixture) {
   const status = apiFixture.fixture?.status?.short;
   if (playedStatusCodes.has(status)) return true;
   return apiFixture.goals?.home !== null || apiFixture.goals?.away !== null;
+}
+
+function chunkArray(items, size) {
+  const chunks = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 async function requestApiFootball(url, apiKey) {

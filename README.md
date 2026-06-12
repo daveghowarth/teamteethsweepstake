@@ -512,6 +512,19 @@ Cards and penalties are not included in FIFA's calendar feed. The admin page can
 /sweepstake-admin
 ```
 
+API-Football's World Cup 2026 guide says to use:
+
+```text
+API_FOOTBALL_LEAGUE_ID=1
+API_FOOTBALL_SEASON=2026
+```
+
+If the API-Football sync returns no fixtures, open this on the deployed site to check what Vercel is receiving:
+
+```text
+/api/api-football/diagnose
+```
+
 ### Updating The Public Site Later
 
 With Supabase connected, use the online admin page and click **Save live site**.
