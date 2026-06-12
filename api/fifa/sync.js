@@ -19,5 +19,6 @@ export default async function handler(request, response) {
 function sendJson(response, statusCode, body) {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", "application/json");
+  response.setHeader("Cache-Control", "no-store, max-age=0");
   response.end(JSON.stringify(body));
 }

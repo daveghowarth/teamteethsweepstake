@@ -1,4 +1,5 @@
 const stateId = "live";
+const completedStatusPattern = /full|final|ft|ended|complete/i;
 
 export async function fetchFifaFixtures() {
   const competitionId = process.env.FIFA_COMPETITION_ID || "17";
@@ -27,15 +28,21 @@ export async function fetchFifaFixtures() {
   }
 
   const fixtures = Array.isArray(payload.Results) ? payload.Results : [];
+  const fixturesWithMatchCentreStats = await addMatchCentreStatsToCompletedFixtures(
+    fixtures,
+    competitionId,
+    seasonId
+  );
 
   return {
     source: "fifa",
     competitionId,
     seasonId,
     fetchedAt: new Date().toISOString(),
-    fixtures,
+    fixtures: fixturesWithMatchCentreStats,
     apiMeta: {
-      results: fixtures.length,
+      results: fixturesWithMatchCentreStats.length,
+      matchCentreStatCount: fixturesWithMatchCentreStats.filter((fixture) => fixture.matchCentreStats).length,
       continuationToken: payload.ContinuationToken,
     },
   };
@@ -129,15 +136,26 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
 
       const homeScore = normaliseScore(fifaFixture.Home?.Score);
       const awayScore = normaliseScore(fifaFixture.Away?.Score);
+      const matchCentreStats = fifaFixture.matchCentreStats || null;
 
       return {
         ...fixture,
         fifaMatchId: fifaFixture.IdMatch || fixture.fifaMatchId || null,
+        fifaStageId: fifaFixture.IdStage || fixture.fifaStageId || null,
+        fifaMatchCentreUrl: fifaFixture.matchCentreUrl || fixture.fifaMatchCentreUrl || null,
         date: getFifaFixtureDate(fifaFixture) || fixture.date,
         kickoffUk: getFifaKickoffUk(fifaFixture) || fixture.kickoffUk,
         venue: getFifaVenue(fifaFixture) || fixture.venue,
         homeScore: homeScore ?? fixture.homeScore ?? null,
         awayScore: awayScore ?? fixture.awayScore ?? null,
+        homeYellowCards: matchCentreStats?.homeYellowCards ?? fixture.homeYellowCards ?? 0,
+        homeRedCards: matchCentreStats?.homeRedCards ?? fixture.homeRedCards ?? 0,
+        awayYellowCards: matchCentreStats?.awayYellowCards ?? fixture.awayYellowCards ?? 0,
+        awayRedCards: matchCentreStats?.awayRedCards ?? fixture.awayRedCards ?? 0,
+        homePenaltiesWon: matchCentreStats?.homePenaltiesWon ?? fixture.homePenaltiesWon ?? 0,
+        homePenaltiesConceded: matchCentreStats?.awayPenaltiesWon ?? fixture.homePenaltiesConceded ?? 0,
+        awayPenaltiesWon: matchCentreStats?.awayPenaltiesWon ?? fixture.awayPenaltiesWon ?? 0,
+        awayPenaltiesConceded: matchCentreStats?.homePenaltiesWon ?? fixture.awayPenaltiesConceded ?? 0,
         apiStatus: fifaFixture.MatchStatus || fixture.apiStatus || null,
         apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName) || fixture.apiRound || null,
       };
@@ -148,6 +166,7 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
       seasonId: fifaPayload.seasonId,
       fetchedAt: fifaPayload.fetchedAt,
       fixtureCount: fifaPayload.fixtures.length,
+      matchCentreStatCount: fifaPayload.apiMeta?.matchCentreStatCount || 0,
       automatic: true,
     },
     updatedAt: new Date().toISOString(),
@@ -171,6 +190,203 @@ function getSupabaseHeaders(serviceKey) {
     Authorization: `Bearer ${serviceKey}`,
     "Content-Type": "application/json",
   };
+}
+
+async function addMatchCentreStatsToCompletedFixtures(fixtures, competitionId, seasonId) {
+  const completedFixtures = fixtures.filter(shouldFetchMatchCentreStats);
+  const statsByMatchId = new Map();
+
+  for (const fixture of completedFixtures) {
+    const matchCentreUrl = buildFifaMatchCentreUrl(fixture, competitionId, seasonId);
+    if (!matchCentreUrl) continue;
+
+    try {
+      const stats = await fetchFifaMatchCentreStats(matchCentreUrl, fixture);
+      statsByMatchId.set(fixture.IdMatch, { stats, matchCentreUrl });
+    } catch (error) {
+      statsByMatchId.set(fixture.IdMatch, {
+        stats: null,
+        matchCentreUrl,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return fixtures.map((fixture) => {
+    const matchCentreResult = statsByMatchId.get(fixture.IdMatch);
+    if (!matchCentreResult) return fixture;
+
+    return {
+      ...fixture,
+      matchCentreUrl: matchCentreResult.matchCentreUrl,
+      matchCentreStats: matchCentreResult.stats,
+      matchCentreError: matchCentreResult.error || null,
+    };
+  });
+}
+
+function shouldFetchMatchCentreStats(fifaFixture) {
+  const homeScore = normaliseScore(fifaFixture.Home?.Score);
+  const awayScore = normaliseScore(fifaFixture.Away?.Score);
+  const statusText = String(fifaFixture.MatchStatus || fifaFixture.MatchStatusName || "");
+
+  return (
+    (homeScore !== null && awayScore !== null) ||
+    completedStatusPattern.test(statusText)
+  );
+}
+
+function buildFifaMatchCentreUrl(fifaFixture, competitionId, seasonId) {
+  const stageId = fifaFixture.IdStage || fifaFixture.Stage?.IdStage || fifaFixture.StageId;
+  const matchId = fifaFixture.IdMatch;
+
+  if (!stageId || !matchId) return "";
+
+  return `https://www.fifa.com/en/match-centre/match/${competitionId}/${seasonId}/${stageId}/${matchId}`;
+}
+
+async function fetchFifaMatchCentreStats(matchCentreUrl, fifaFixture) {
+  const response = await fetch(matchCentreUrl, {
+    headers: {
+      accept: "text/html",
+      "user-agent": "Mozilla/5.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FIFA match centre returned ${response.status}.`);
+  }
+
+  const html = await response.text();
+  const liveBlogUpdates = extractFifaLiveBlogUpdates(html);
+  const homeTeamName = getFifaText(fifaFixture.Home?.TeamName) || fifaFixture.Home?.ShortClubName || "";
+  const awayTeamName = getFifaText(fifaFixture.Away?.TeamName) || fifaFixture.Away?.ShortClubName || "";
+
+  return calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName);
+}
+
+function extractFifaLiveBlogUpdates(html) {
+  const scriptPattern = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const updates = [];
+  let match;
+
+  while ((match = scriptPattern.exec(html))) {
+    const jsonText = decodeHtmlEntities(match[1].trim());
+
+    try {
+      const data = JSON.parse(jsonText);
+      const entries = Array.isArray(data) ? data : [data];
+
+      for (const entry of entries) {
+        if (Array.isArray(entry.liveBlogUpdate)) {
+          updates.push(...entry.liveBlogUpdate);
+        }
+      }
+    } catch {
+      // Other structured-data snippets can exist on the page; skip any that are not JSON we need.
+    }
+  }
+
+  return updates;
+}
+
+function calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName) {
+  const stats = {
+    homeYellowCards: 0,
+    homeRedCards: 0,
+    homePenaltiesWon: 0,
+    awayYellowCards: 0,
+    awayRedCards: 0,
+    awayPenaltiesWon: 0,
+  };
+  const homeMatchName = normaliseTeamName(homeTeamName);
+  const awayMatchName = normaliseTeamName(awayTeamName);
+
+  for (const update of liveBlogUpdates) {
+    const headline = String(update.headline || "").toLowerCase();
+    const body = String(update.articleBody || "");
+    const bodyLower = body.toLowerCase();
+    const teamName = extractTeamNameFromEventBody(body);
+    const teamSide =
+      normaliseTeamName(teamName) === homeMatchName
+        ? "home"
+        : normaliseTeamName(teamName) === awayMatchName
+          ? "away"
+          : null;
+
+    if (!teamSide) continue;
+
+    if (headline.includes("yellow card") || bodyLower.includes("is booked")) {
+      stats[`${teamSide}YellowCards`] += 1;
+    }
+
+    if (
+      headline.includes("red card") ||
+      headline.includes("second yellow") ||
+      bodyLower.includes("is sent off")
+    ) {
+      stats[`${teamSide}RedCards`] += 1;
+    }
+
+    if (isFifaPenaltyEvent(headline, bodyLower)) {
+      stats[`${teamSide}PenaltiesWon`] += 1;
+    }
+  }
+
+  return stats;
+}
+
+function extractTeamNameFromEventBody(body) {
+  const matches = [...String(body).matchAll(/\(([^)]+)\)/g)];
+  return matches.at(-1)?.[1] || "";
+}
+
+function isFifaPenaltyEvent(headline, bodyLower) {
+  if (headline.includes("penalty shootout") || bodyLower.includes("penalty shootout")) return false;
+
+  return (
+    headline === "penalty" ||
+    headline.includes("penalty scored") ||
+    headline.includes("penalty missed") ||
+    bodyLower.includes("penalty is awarded") ||
+    bodyLower.includes("scores from the penalty") ||
+    bodyLower.includes("misses the penalty")
+  );
+}
+
+function decodeHtmlEntities(text) {
+  return String(text)
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function normaliseTeamName(name = "") {
+  const aliases = {
+    "bosnia herzegovina": "bosnia and herzegovina",
+    "bosnia and herzegovina": "bosnia and herzegovina",
+    "cote d ivoire": "ivory coast",
+    "cote divoire": "ivory coast",
+    "czech republic": "czechia",
+    "ivory coast": "ivory coast",
+    "korea republic": "korea republic",
+    "south korea": "korea republic",
+    "turkey": "turkiye",
+    "turkiye": "turkiye",
+    "united states": "united states",
+    "usa": "united states",
+  };
+  const normalised = String(name)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return aliases[normalised] || normalised;
 }
 
 function getFifaFixtureDate(fifaFixture) {

@@ -26,6 +26,7 @@ export default async function handler(request, response) {
       ok: true,
       fetchedAt: fifaResult.fetchedAt,
       fifaFixtureCount: fifaResult.fixtures.length,
+      fifaMatchCentreStatCount: fifaResult.apiMeta?.matchCentreStatCount || 0,
       apiFootball: apiFootballResult,
       updatedFixtureCount: fifaResult.updatedFixtureCount,
       completedFixtureCount: fifaResult.completedFixtureCount,

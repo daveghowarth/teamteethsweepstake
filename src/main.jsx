@@ -1580,7 +1580,7 @@ function SweepstakeAdmin({
   }
 
   async function syncFifaFixtures() {
-    setSyncStatus({ type: "loading", message: "Syncing fixtures and scores from FIFA..." });
+    setSyncStatus({ type: "loading", message: "Syncing fixtures, scores, cards, and penalties from FIFA..." });
 
     try {
       const response = await fetch("/api/fifa/sync");
@@ -1599,7 +1599,9 @@ function SweepstakeAdmin({
       setTournament((current) => mapFifaDataToTournament(current, syncedFixtures, payload));
       setSyncStatus({
         type: "success",
-        message: `Synced ${syncedFixtures.length} fixtures from FIFA. Press Save live site to publish them.`,
+        message: `Synced ${syncedFixtures.length} fixtures from FIFA and read ${
+          payload.apiMeta?.matchCentreStatCount || 0
+        } match-centre stat pages. Press Save live site to publish them.`,
       });
     } catch (error) {
       setSyncStatus({
@@ -1717,8 +1719,8 @@ function SweepstakeAdmin({
       <Panel title="Fixture and score sync">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-2xl text-sm leading-6 text-white/65">
-            Pull the latest fixture dates, UK kickoff times, teams, and available scores from FIFA.
-            API-Football can also be tested for cards and penalty events.
+            Pull fixture dates, UK kickoff times, scores, cards, and penalty events from FIFA.
+            API-Football remains available as a secondary test feed.
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -3039,10 +3041,13 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
     const previousFixture = previousFixturesByFifaId.get(fifaFixture.IdMatch);
     const homeScore = normaliseApiScore(fifaFixture.Home?.Score);
     const awayScore = normaliseApiScore(fifaFixture.Away?.Score);
+    const matchCentreStats = fifaFixture.matchCentreStats || null;
 
     return {
       id: `fifa-${fifaFixture.IdMatch || index + 1}`,
       fifaMatchId: fifaFixture.IdMatch || null,
+      fifaStageId: fifaFixture.IdStage || previousFixture?.fifaStageId || null,
+      fifaMatchCentreUrl: fifaFixture.matchCentreUrl || previousFixture?.fifaMatchCentreUrl || null,
       matchNumber: fifaFixture.MatchNumber || index + 1,
       stage,
       group,
@@ -3055,14 +3060,16 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       awayTeamName: awayTeam.name,
       homeScore: homeScore ?? previousFixture?.homeScore ?? null,
       awayScore: awayScore ?? previousFixture?.awayScore ?? null,
-      homeYellowCards: previousFixture?.homeYellowCards || 0,
-      homeRedCards: previousFixture?.homeRedCards || 0,
-      awayYellowCards: previousFixture?.awayYellowCards || 0,
-      awayRedCards: previousFixture?.awayRedCards || 0,
-      homePenaltiesWon: previousFixture?.homePenaltiesWon || 0,
-      homePenaltiesConceded: previousFixture?.homePenaltiesConceded || 0,
-      awayPenaltiesWon: previousFixture?.awayPenaltiesWon || 0,
-      awayPenaltiesConceded: previousFixture?.awayPenaltiesConceded || 0,
+      homeYellowCards: matchCentreStats?.homeYellowCards ?? previousFixture?.homeYellowCards ?? 0,
+      homeRedCards: matchCentreStats?.homeRedCards ?? previousFixture?.homeRedCards ?? 0,
+      awayYellowCards: matchCentreStats?.awayYellowCards ?? previousFixture?.awayYellowCards ?? 0,
+      awayRedCards: matchCentreStats?.awayRedCards ?? previousFixture?.awayRedCards ?? 0,
+      homePenaltiesWon: matchCentreStats?.homePenaltiesWon ?? previousFixture?.homePenaltiesWon ?? 0,
+      homePenaltiesConceded:
+        matchCentreStats?.awayPenaltiesWon ?? previousFixture?.homePenaltiesConceded ?? 0,
+      awayPenaltiesWon: matchCentreStats?.awayPenaltiesWon ?? previousFixture?.awayPenaltiesWon ?? 0,
+      awayPenaltiesConceded:
+        matchCentreStats?.homePenaltiesWon ?? previousFixture?.awayPenaltiesConceded ?? 0,
       apiStatus: fifaFixture.MatchStatus || null,
       apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName),
     };
@@ -3078,6 +3085,7 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       seasonId: syncPayload.seasonId,
       fetchedAt: syncPayload.fetchedAt,
       fixtureCount: nextFixtures.length,
+      matchCentreStatCount: syncPayload.apiMeta?.matchCentreStatCount || 0,
     },
     updatedAt: new Date().toISOString(),
   };

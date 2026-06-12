@@ -498,7 +498,7 @@ The deployed Vercel site includes a scheduled job that runs once per day:
 /api/cron/sync-fifa
 ```
 
-This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically. If `API_FOOTBALL_KEY` is set, it also tries API-Football for cards and penalty events. It is set to run at 7am UTC, which is 8am UK time during British Summer Time.
+This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically. For completed matches, it also checks FIFA match-centre pages for card and penalty events. If `API_FOOTBALL_KEY` is set, it can still try API-Football as a secondary source. It is set to run at 7am UTC, which is 8am UK time during British Summer Time.
 
 Vercel Hobby accounts only allow scheduled cron jobs once per day. If you upgrade Vercel later, this can be changed back to hourly.
 
@@ -506,7 +506,7 @@ Vercel Hobby accounts only allow scheduled cron jobs once per day. If you upgrad
 
 The public website checks the live data every 2 minutes, so people who already have the page open should see new scores shortly after the automatic sync has saved them.
 
-Cards and penalties are not included in FIFA's calendar feed. The admin page can now test API-Football for card and penalty events, but manual entry remains available as a fallback on:
+Cards and penalties are not included in FIFA's basic calendar feed, so the app enriches completed matches from FIFA match-centre pages. Manual entry remains available as a fallback on:
 
 ```text
 /sweepstake-admin
