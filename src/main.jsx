@@ -179,19 +179,23 @@ function App() {
     if (isLocalSite) return undefined;
 
     let isMounted = true;
+    let intervalId;
 
-    loadLiveTournamentData()
-      .then((liveData) => {
+    async function refreshLiveData({ useFallback = false } = {}) {
+      try {
+        const liveData = await loadLiveTournamentData();
         if (!isMounted) return;
 
         if (isEditableSite) {
           setLocalTournament(liveData);
           hasSavedLocalTournament.current = true;
-        } else {
-          setPublishedTournament(liveData);
+          return;
         }
-      })
-      .catch(async () => {
+
+        setPublishedTournament(liveData);
+      } catch {
+        if (!useFallback) return;
+
         const fallbackData = await loadPublishedJsonFallback();
 
         if (!isMounted) return;
@@ -202,10 +206,20 @@ function App() {
         } else {
           setPublishedTournament(fallbackData);
         }
-      });
+      }
+    }
+
+    refreshLiveData({ useFallback: true });
+
+    if (!isEditableSite) {
+      intervalId = window.setInterval(() => {
+        refreshLiveData();
+      }, 120000);
+    }
 
     return () => {
       isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [isEditableSite, isLocalSite, setLocalTournament]);
 
@@ -2070,7 +2084,7 @@ function isLocalEditableSite() {
 }
 
 async function loadLiveTournamentData() {
-  const response = await fetch("/api/tournament");
+  const response = await fetch(`/api/tournament?ts=${Date.now()}`, { cache: "no-store" });
   const payload = await response.json();
 
   if (!response.ok) {

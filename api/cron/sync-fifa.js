@@ -8,8 +8,11 @@ export default async function handler(request, response) {
 
   const cronSecret = process.env.CRON_SECRET;
   const authorization = request.headers.authorization || "";
+  const userAgent = request.headers["user-agent"] || "";
+  const isVercelCron = userAgent.includes("vercel-cron/1.0");
+  const hasValidSecret = cronSecret && authorization === `Bearer ${cronSecret}`;
 
-  if (cronSecret && authorization !== `Bearer ${cronSecret}`) {
+  if (!isVercelCron && !hasValidSecret) {
     sendJson(response, 401, { error: "Unauthorized cron request." });
     return;
   }

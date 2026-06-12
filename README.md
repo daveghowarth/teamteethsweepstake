@@ -471,7 +471,7 @@ Add these environment variables in Vercel:
 ```text
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-CRON_SECRET=choose_a_private_random_cron_secret
+CRON_SECRET=choose_a_private_random_cron_secret_optional
 ```
 
 Do not put the service role key in React code, GitHub, or `.env.example`.
@@ -496,7 +496,9 @@ The deployed Vercel site includes a scheduled job that runs once per hour:
 
 This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically.
 
-Set `CRON_SECRET` in Vercel to a private random value. Vercel Cron will use it to call the scheduled endpoint securely.
+`CRON_SECRET` is optional. If you set it in Vercel, it can be used for protected manual test calls to the scheduled endpoint. Vercel's own scheduled cron call is also allowed automatically.
+
+The public website checks the live data every 2 minutes, so people who already have the page open should see new scores shortly after the automatic sync has saved them.
 
 Cards and penalties are not included in FIFA's calendar feed, so those still need to be entered manually on:
 
