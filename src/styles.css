@@ -99,6 +99,25 @@ body {
   transform: translateX(100%);
 }
 
+.group-table-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.group-table-row-top-two {
+  background:
+    linear-gradient(90deg, rgba(251, 191, 36, 0.26), rgba(251, 191, 36, 0.12) 48%, rgba(251, 191, 36, 0.04));
+  box-shadow: inset 4px 0 0 rgba(251, 191, 36, 0.9);
+  color: rgba(255, 251, 235, 0.98);
+}
+
+.group-table-row-third {
+  background:
+    linear-gradient(90deg, rgba(226, 232, 240, 0.18), rgba(226, 232, 240, 0.08) 48%, rgba(226, 232, 240, 0.03));
+  box-shadow: inset 4px 0 0 rgba(203, 213, 225, 0.55);
+  color: rgba(241, 245, 249, 0.94);
+}
+
 .pitch-lines {
   background-image:
     linear-gradient(90deg, rgba(255, 255, 255, 0.24) 1px, transparent 1px),

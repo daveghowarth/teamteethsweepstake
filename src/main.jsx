@@ -1841,15 +1841,11 @@ function GroupTables({ groupTables }) {
                 </thead>
                 <tbody>
                   {table.map((team, index) => {
-                    const qualificationPositionClass =
-                      index < 2
-                        ? "bg-amber-200/15 text-amber-50"
-                        : index === 2
-                          ? "bg-slate-200/10 text-slate-100"
-                          : "text-white/85";
+                    const positionClass =
+                      index < 2 ? "group-table-row-top-two" : index === 2 ? "group-table-row-third" : "";
 
                     return (
-                    <tr key={team.id} className={`border-t border-white/10 ${qualificationPositionClass}`}>
+                    <tr key={team.id} className={`group-table-row ${positionClass}`}>
                       <td className="px-3 py-2 font-semibold">
                         <TeamName team={team} name={team.name} />
                       </td>
