@@ -1,4 +1,5 @@
 import { syncFifaFixturesToSupabase } from "../_fifaSync.js";
+import { syncApiFootballEventsToSupabase } from "../_apiFootballSync.js";
 
 export default async function handler(request, response) {
   if (request.method !== "GET") {
@@ -18,14 +19,16 @@ export default async function handler(request, response) {
   }
 
   try {
-    const result = await syncFifaFixturesToSupabase();
+    const fifaResult = await syncFifaFixturesToSupabase();
+    const apiFootballResult = await trySyncApiFootballEvents();
 
     sendJson(response, 200, {
       ok: true,
-      fetchedAt: result.fetchedAt,
-      fifaFixtureCount: result.fixtures.length,
-      updatedFixtureCount: result.updatedFixtureCount,
-      completedFixtureCount: result.completedFixtureCount,
+      fetchedAt: fifaResult.fetchedAt,
+      fifaFixtureCount: fifaResult.fixtures.length,
+      apiFootball: apiFootballResult,
+      updatedFixtureCount: fifaResult.updatedFixtureCount,
+      completedFixtureCount: fifaResult.completedFixtureCount,
     });
   } catch (error) {
     sendJson(response, error.statusCode || 500, {
@@ -36,8 +39,36 @@ export default async function handler(request, response) {
   }
 }
 
+async function trySyncApiFootballEvents() {
+  if (!process.env.API_FOOTBALL_KEY) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "API_FOOTBALL_KEY is not set.",
+    };
+  }
+
+  try {
+    const result = await syncApiFootballEventsToSupabase();
+
+    return {
+      ok: true,
+      fetchedAt: result.fetchedAt,
+      fixtureCount: result.fixtures.length,
+      eventFixtureCount: result.eventFixtureCount,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      skipped: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 function sendJson(response, statusCode, body) {
   response.statusCode = statusCode;
   response.setHeader("Content-Type", "application/json");
+  response.setHeader("Cache-Control", "no-store, max-age=0");
   response.end(JSON.stringify(body));
 }

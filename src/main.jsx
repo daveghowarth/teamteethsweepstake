@@ -1580,6 +1580,38 @@ function SweepstakeAdmin({
     }
   }
 
+  async function syncApiFootballStats() {
+    setSyncStatus({ type: "loading", message: "Syncing cards, penalties, and scores from API-Football..." });
+
+    try {
+      const response = await fetch("/api/api-football/sync");
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "API-Football sync failed.");
+      }
+
+      const syncedFixtures = Array.isArray(payload.fixtures) ? payload.fixtures : [];
+
+      if (syncedFixtures.length === 0) {
+        throw new Error("API-Football returned no fixtures for this tournament.");
+      }
+
+      setTournament((current) => mapApiFootballDataToTournament(current, syncedFixtures, payload));
+      setSyncStatus({
+        type: "success",
+        message: `API-Football checked ${syncedFixtures.length} fixtures and found event data for ${
+          payload.apiMeta?.eventFixtureCount || 0
+        }. Press Save live site to publish the updates.`,
+      });
+    } catch (error) {
+      setSyncStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Could not sync from API-Football.",
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1651,16 +1683,26 @@ function SweepstakeAdmin({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-2xl text-sm leading-6 text-white/65">
             Pull the latest fixture dates, UK kickoff times, teams, and available scores from FIFA.
-            Cards and penalties still need to be entered manually.
+            API-Football can also be tested for cards and penalty events.
           </p>
-          <button
-            type="button"
-            className="rounded-lg bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
-            onClick={syncFifaFixtures}
-            disabled={syncStatus?.type === "loading"}
-          >
-            {syncStatus?.type === "loading" ? "Syncing..." : "Sync from FIFA"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
+              onClick={syncFifaFixtures}
+              disabled={syncStatus?.type === "loading"}
+            >
+              {syncStatus?.type === "loading" ? "Syncing..." : "Sync from FIFA"}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+              onClick={syncApiFootballStats}
+              disabled={syncStatus?.type === "loading"}
+            >
+              {syncStatus?.type === "loading" ? "Syncing..." : "Sync cards & penalties"}
+            </button>
+          </div>
         </div>
         {syncStatus && (
           <div
@@ -3062,72 +3104,131 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
 }
 
 function mapApiFootballDataToTournament(currentTournament, apiFixtures, syncPayload) {
-  const sortedApiFixtures = [...apiFixtures].sort((a, b) =>
-    getApiFixtureDate(a).localeCompare(getApiFixtureDate(b))
-  );
-  const nextTeams = currentTournament.teams.map((team) => ({ ...team }));
-  const previousFixturesByApiId = new Map(
-    currentTournament.fixtures
-      .filter((fixture) => fixture.apiFootballFixtureId)
-      .map((fixture) => [fixture.apiFootballFixtureId, fixture])
-  );
-  const groupSlotUsage = {};
+  let matchedFixtureCount = 0;
+  let eventFixtureCount = 0;
+  const nextFixtures = currentTournament.fixtures.map((fixture) => {
+    const apiFixture = findMatchingApiFootballFixture(fixture, apiFixtures);
+    if (!apiFixture) return fixture;
 
-  for (const group of currentTournament.groups) {
-    groupSlotUsage[group] = new Set();
-  }
+    matchedFixtureCount += 1;
+    if (Array.isArray(apiFixture.events)) eventFixtureCount += 1;
 
-  const nextFixtures = sortedApiFixtures.map((apiFixture, index) => {
-    const roundText = apiFixture.league?.round || "";
-    const stage = parseApiStage(roundText);
-    const group = stage === "Group" ? parseApiGroup(roundText) : null;
-    const homeTeam = mapApiTeamToLocalTeam(apiFixture.teams?.home, group, nextTeams, groupSlotUsage);
-    const awayTeam = mapApiTeamToLocalTeam(apiFixture.teams?.away, group, nextTeams, groupSlotUsage);
-    const previousFixture = previousFixturesByApiId.get(apiFixture.fixture?.id);
     const apiHomeScore = normaliseApiScore(apiFixture.goals?.home);
     const apiAwayScore = normaliseApiScore(apiFixture.goals?.away);
+    const eventStats = calculateApiFootballEventStats(apiFixture);
+    const hasEvents = Array.isArray(apiFixture.events);
 
     return {
-      id: `api-${apiFixture.fixture?.id || index + 1}`,
-      apiFootballFixtureId: apiFixture.fixture?.id || null,
-      matchNumber: index + 1,
-      stage,
-      group,
-      date: getApiFixtureDate(apiFixture),
-      kickoffUk: getApiFixtureKickoffUk(apiFixture),
-      venue: apiFixture.fixture?.venue?.name || "Venue TBC",
-      homeTeamId: homeTeam.id,
-      awayTeamId: awayTeam.id,
-      homeTeamName: homeTeam.name,
-      awayTeamName: awayTeam.name,
-      homeScore: apiHomeScore ?? previousFixture?.homeScore ?? null,
-      awayScore: apiAwayScore ?? previousFixture?.awayScore ?? null,
-      homeYellowCards: previousFixture?.homeYellowCards || 0,
-      homeRedCards: previousFixture?.homeRedCards || 0,
-      awayYellowCards: previousFixture?.awayYellowCards || 0,
-      awayRedCards: previousFixture?.awayRedCards || 0,
-      homePenaltiesWon: previousFixture?.homePenaltiesWon || 0,
-      homePenaltiesConceded: previousFixture?.homePenaltiesConceded || 0,
-      awayPenaltiesWon: previousFixture?.awayPenaltiesWon || 0,
-      awayPenaltiesConceded: previousFixture?.awayPenaltiesConceded || 0,
-      apiStatus: apiFixture.fixture?.status?.short || null,
-      apiRound: roundText,
+      ...fixture,
+      apiFootballFixtureId: apiFixture.fixture?.id || fixture.apiFootballFixtureId || null,
+      homeScore: apiHomeScore ?? fixture.homeScore ?? null,
+      awayScore: apiAwayScore ?? fixture.awayScore ?? null,
+      homeYellowCards: hasEvents ? eventStats.home.yellowCards : fixture.homeYellowCards || 0,
+      homeRedCards: hasEvents ? eventStats.home.redCards : fixture.homeRedCards || 0,
+      awayYellowCards: hasEvents ? eventStats.away.yellowCards : fixture.awayYellowCards || 0,
+      awayRedCards: hasEvents ? eventStats.away.redCards : fixture.awayRedCards || 0,
+      homePenaltiesWon: hasEvents ? eventStats.home.penaltiesWon : fixture.homePenaltiesWon || 0,
+      homePenaltiesConceded: hasEvents ? eventStats.away.penaltiesWon : fixture.homePenaltiesConceded || 0,
+      awayPenaltiesWon: hasEvents ? eventStats.away.penaltiesWon : fixture.awayPenaltiesWon || 0,
+      awayPenaltiesConceded: hasEvents ? eventStats.home.penaltiesWon : fixture.awayPenaltiesConceded || 0,
+      apiFootballStatus: apiFixture.fixture?.status?.short || fixture.apiFootballStatus || null,
     };
   });
 
   return {
     ...currentTournament,
-    teams: nextTeams,
     fixtures: nextFixtures,
     apiFootballSync: {
       source: syncPayload.source,
       leagueId: syncPayload.leagueId,
       season: syncPayload.season,
       fetchedAt: syncPayload.fetchedAt,
-      fixtureCount: nextFixtures.length,
+      fixtureCount: apiFixtures.length,
+      matchedFixtureCount,
+      eventFixtureCount,
     },
     updatedAt: new Date().toISOString(),
   };
+}
+
+function findMatchingApiFootballFixture(fixture, apiFixtures) {
+  if (fixture.apiFootballFixtureId) {
+    const matchById = apiFixtures.find(
+      (apiFixture) => apiFixture.fixture?.id === fixture.apiFootballFixtureId
+    );
+    if (matchById) return matchById;
+  }
+
+  const homeName = normaliseTeamNameForMatching(fixture.homeTeamName);
+  const awayName = normaliseTeamNameForMatching(fixture.awayTeamName);
+
+  return apiFixtures.find((apiFixture) => {
+    const apiHomeName = normaliseTeamNameForMatching(apiFixture.teams?.home?.name);
+    const apiAwayName = normaliseTeamNameForMatching(apiFixture.teams?.away?.name);
+    return apiHomeName === homeName && apiAwayName === awayName;
+  });
+}
+
+function calculateApiFootballEventStats(apiFixture) {
+  const homeTeamId = apiFixture.teams?.home?.id;
+  const awayTeamId = apiFixture.teams?.away?.id;
+  const stats = {
+    home: { yellowCards: 0, redCards: 0, penaltiesWon: 0 },
+    away: { yellowCards: 0, redCards: 0, penaltiesWon: 0 },
+  };
+
+  for (const event of apiFixture.events || []) {
+    const side = event.team?.id === homeTeamId ? "home" : event.team?.id === awayTeamId ? "away" : null;
+    if (!side) continue;
+
+    const type = String(event.type || "").toLowerCase();
+    const detail = String(event.detail || "").toLowerCase();
+    const comments = String(event.comments || "").toLowerCase();
+    const eventText = `${type} ${detail} ${comments}`;
+
+    if (type === "card" && detail.includes("yellow")) {
+      stats[side].yellowCards += 1;
+    }
+
+    if (type === "card" && (detail.includes("red") || detail.includes("second yellow"))) {
+      stats[side].redCards += 1;
+    }
+
+    if (isApiFootballPenaltyAttempt(detail) && !eventText.includes("shootout")) {
+      stats[side].penaltiesWon += 1;
+    }
+  }
+
+  return stats;
+}
+
+function isApiFootballPenaltyAttempt(detail) {
+  return detail === "penalty" || detail === "missed penalty";
+}
+
+function normaliseTeamNameForMatching(name = "") {
+  const aliases = {
+    "bosnia herzegovina": "bosnia and herzegovina",
+    "bosnia and herzegovina": "bosnia and herzegovina",
+    "cote d ivoire": "ivory coast",
+    "cote divoire": "ivory coast",
+    "ivory coast": "ivory coast",
+    "south korea": "korea republic",
+    "korea republic": "korea republic",
+    "usa": "united states",
+    "united states": "united states",
+    "turkey": "turkiye",
+    "turkiye": "turkiye",
+    "curacao": "curacao",
+  };
+  const normalised = String(name)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  return aliases[normalised] || normalised;
 }
 
 function mapApiTeamToLocalTeam(apiTeam, group, teams, groupSlotUsage) {
