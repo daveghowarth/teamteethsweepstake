@@ -148,14 +148,20 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
         venue: getFifaVenue(fifaFixture) || fixture.venue,
         homeScore: homeScore ?? fixture.homeScore ?? null,
         awayScore: awayScore ?? fixture.awayScore ?? null,
-        homeYellowCards: matchCentreStats?.homeYellowCards ?? fixture.homeYellowCards ?? 0,
-        homeRedCards: matchCentreStats?.homeRedCards ?? fixture.homeRedCards ?? 0,
-        awayYellowCards: matchCentreStats?.awayYellowCards ?? fixture.awayYellowCards ?? 0,
-        awayRedCards: matchCentreStats?.awayRedCards ?? fixture.awayRedCards ?? 0,
-        homePenaltiesWon: matchCentreStats?.homePenaltiesWon ?? fixture.homePenaltiesWon ?? 0,
-        homePenaltiesConceded: matchCentreStats?.awayPenaltiesWon ?? fixture.homePenaltiesConceded ?? 0,
-        awayPenaltiesWon: matchCentreStats?.awayPenaltiesWon ?? fixture.awayPenaltiesWon ?? 0,
-        awayPenaltiesConceded: matchCentreStats?.homePenaltiesWon ?? fixture.awayPenaltiesConceded ?? 0,
+        homeYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.homeYellowCards, fixture.homeYellowCards),
+        homeRedCards: mergePositiveMatchCentreStat(matchCentreStats?.homeRedCards, fixture.homeRedCards),
+        awayYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.awayYellowCards, fixture.awayYellowCards),
+        awayRedCards: mergePositiveMatchCentreStat(matchCentreStats?.awayRedCards, fixture.awayRedCards),
+        homePenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.homePenaltiesWon, fixture.homePenaltiesWon),
+        homePenaltiesConceded: mergePositiveMatchCentreStat(
+          matchCentreStats?.awayPenaltiesWon,
+          fixture.homePenaltiesConceded
+        ),
+        awayPenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.awayPenaltiesWon, fixture.awayPenaltiesWon),
+        awayPenaltiesConceded: mergePositiveMatchCentreStat(
+          matchCentreStats?.homePenaltiesWon,
+          fixture.awayPenaltiesConceded
+        ),
         apiStatus: fifaFixture.MatchStatus || fixture.apiStatus || null,
         apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName) || fixture.apiRound || null,
       };
@@ -362,6 +368,16 @@ function decodeHtmlEntities(text) {
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
+  const parsedMatchCentreValue = Number(matchCentreValue);
+
+  if (!Number.isNaN(parsedMatchCentreValue) && parsedMatchCentreValue > 0) {
+    return parsedMatchCentreValue;
+  }
+
+  return existingValue ?? 0;
 }
 
 function normaliseTeamName(name = "") {

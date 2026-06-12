@@ -108,14 +108,14 @@ export function mergeApiFootballEventsIntoTournament(tournament, apiPayload) {
         apiFootballFixtureId: apiFixtureId,
         homeScore: apiHomeScore ?? fixture.homeScore ?? null,
         awayScore: apiAwayScore ?? fixture.awayScore ?? null,
-        homeYellowCards: eventStats.home.yellowCards ?? fixture.homeYellowCards ?? 0,
-        homeRedCards: eventStats.home.redCards ?? fixture.homeRedCards ?? 0,
-        awayYellowCards: eventStats.away.yellowCards ?? fixture.awayYellowCards ?? 0,
-        awayRedCards: eventStats.away.redCards ?? fixture.awayRedCards ?? 0,
-        homePenaltiesWon: eventStats.home.penaltiesWon ?? fixture.homePenaltiesWon ?? 0,
-        homePenaltiesConceded: eventStats.away.penaltiesWon ?? fixture.homePenaltiesConceded ?? 0,
-        awayPenaltiesWon: eventStats.away.penaltiesWon ?? fixture.awayPenaltiesWon ?? 0,
-        awayPenaltiesConceded: eventStats.home.penaltiesWon ?? fixture.awayPenaltiesConceded ?? 0,
+        homeYellowCards: mergePositiveStat(eventStats.home.yellowCards, fixture.homeYellowCards),
+        homeRedCards: mergePositiveStat(eventStats.home.redCards, fixture.homeRedCards),
+        awayYellowCards: mergePositiveStat(eventStats.away.yellowCards, fixture.awayYellowCards),
+        awayRedCards: mergePositiveStat(eventStats.away.redCards, fixture.awayRedCards),
+        homePenaltiesWon: mergePositiveStat(eventStats.home.penaltiesWon, fixture.homePenaltiesWon),
+        homePenaltiesConceded: mergePositiveStat(eventStats.away.penaltiesWon, fixture.homePenaltiesConceded),
+        awayPenaltiesWon: mergePositiveStat(eventStats.away.penaltiesWon, fixture.awayPenaltiesWon),
+        awayPenaltiesConceded: mergePositiveStat(eventStats.home.penaltiesWon, fixture.awayPenaltiesConceded),
         apiFootballStatus: apiFixture.fixture?.status?.short || fixture.apiFootballStatus || null,
       };
     }),
@@ -403,6 +403,16 @@ function calculateEventStats(apiFixture) {
 
 function isPenaltyAttempt(detail) {
   return detail === "penalty" || detail === "missed penalty";
+}
+
+function mergePositiveStat(apiValue, existingValue) {
+  const parsedApiValue = Number(apiValue);
+
+  if (!Number.isNaN(parsedApiValue) && parsedApiValue > 0) {
+    return parsedApiValue;
+  }
+
+  return existingValue ?? 0;
 }
 
 async function loadLiveTournament(supabase) {

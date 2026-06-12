@@ -3060,16 +3060,28 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       awayTeamName: awayTeam.name,
       homeScore: homeScore ?? previousFixture?.homeScore ?? null,
       awayScore: awayScore ?? previousFixture?.awayScore ?? null,
-      homeYellowCards: matchCentreStats?.homeYellowCards ?? previousFixture?.homeYellowCards ?? 0,
-      homeRedCards: matchCentreStats?.homeRedCards ?? previousFixture?.homeRedCards ?? 0,
-      awayYellowCards: matchCentreStats?.awayYellowCards ?? previousFixture?.awayYellowCards ?? 0,
-      awayRedCards: matchCentreStats?.awayRedCards ?? previousFixture?.awayRedCards ?? 0,
-      homePenaltiesWon: matchCentreStats?.homePenaltiesWon ?? previousFixture?.homePenaltiesWon ?? 0,
+      homeYellowCards: mergePositiveMatchCentreStat(
+        matchCentreStats?.homeYellowCards,
+        previousFixture?.homeYellowCards
+      ),
+      homeRedCards: mergePositiveMatchCentreStat(matchCentreStats?.homeRedCards, previousFixture?.homeRedCards),
+      awayYellowCards: mergePositiveMatchCentreStat(
+        matchCentreStats?.awayYellowCards,
+        previousFixture?.awayYellowCards
+      ),
+      awayRedCards: mergePositiveMatchCentreStat(matchCentreStats?.awayRedCards, previousFixture?.awayRedCards),
+      homePenaltiesWon: mergePositiveMatchCentreStat(
+        matchCentreStats?.homePenaltiesWon,
+        previousFixture?.homePenaltiesWon
+      ),
       homePenaltiesConceded:
-        matchCentreStats?.awayPenaltiesWon ?? previousFixture?.homePenaltiesConceded ?? 0,
-      awayPenaltiesWon: matchCentreStats?.awayPenaltiesWon ?? previousFixture?.awayPenaltiesWon ?? 0,
+        mergePositiveMatchCentreStat(matchCentreStats?.awayPenaltiesWon, previousFixture?.homePenaltiesConceded),
+      awayPenaltiesWon: mergePositiveMatchCentreStat(
+        matchCentreStats?.awayPenaltiesWon,
+        previousFixture?.awayPenaltiesWon
+      ),
       awayPenaltiesConceded:
-        matchCentreStats?.homePenaltiesWon ?? previousFixture?.awayPenaltiesConceded ?? 0,
+        mergePositiveMatchCentreStat(matchCentreStats?.homePenaltiesWon, previousFixture?.awayPenaltiesConceded),
       apiStatus: fifaFixture.MatchStatus || null,
       apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName),
     };
@@ -3146,6 +3158,16 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
   return fallbackTeam;
 }
 
+function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
+  const parsedMatchCentreValue = Number(matchCentreValue);
+
+  if (!Number.isNaN(parsedMatchCentreValue) && parsedMatchCentreValue > 0) {
+    return parsedMatchCentreValue;
+  }
+
+  return existingValue ?? 0;
+}
+
 function mapApiFootballDataToTournament(currentTournament, apiFixtures, syncPayload) {
   let matchedFixtureCount = 0;
   let eventFixtureCount = 0;
@@ -3166,14 +3188,30 @@ function mapApiFootballDataToTournament(currentTournament, apiFixtures, syncPayl
       apiFootballFixtureId: apiFixture.fixture?.id || fixture.apiFootballFixtureId || null,
       homeScore: apiHomeScore ?? fixture.homeScore ?? null,
       awayScore: apiAwayScore ?? fixture.awayScore ?? null,
-      homeYellowCards: hasEvents ? eventStats.home.yellowCards : fixture.homeYellowCards || 0,
-      homeRedCards: hasEvents ? eventStats.home.redCards : fixture.homeRedCards || 0,
-      awayYellowCards: hasEvents ? eventStats.away.yellowCards : fixture.awayYellowCards || 0,
-      awayRedCards: hasEvents ? eventStats.away.redCards : fixture.awayRedCards || 0,
-      homePenaltiesWon: hasEvents ? eventStats.home.penaltiesWon : fixture.homePenaltiesWon || 0,
-      homePenaltiesConceded: hasEvents ? eventStats.away.penaltiesWon : fixture.homePenaltiesConceded || 0,
-      awayPenaltiesWon: hasEvents ? eventStats.away.penaltiesWon : fixture.awayPenaltiesWon || 0,
-      awayPenaltiesConceded: hasEvents ? eventStats.home.penaltiesWon : fixture.awayPenaltiesConceded || 0,
+      homeYellowCards: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.home.yellowCards, fixture.homeYellowCards)
+        : fixture.homeYellowCards || 0,
+      homeRedCards: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.home.redCards, fixture.homeRedCards)
+        : fixture.homeRedCards || 0,
+      awayYellowCards: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.away.yellowCards, fixture.awayYellowCards)
+        : fixture.awayYellowCards || 0,
+      awayRedCards: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.away.redCards, fixture.awayRedCards)
+        : fixture.awayRedCards || 0,
+      homePenaltiesWon: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.home.penaltiesWon, fixture.homePenaltiesWon)
+        : fixture.homePenaltiesWon || 0,
+      homePenaltiesConceded: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.away.penaltiesWon, fixture.homePenaltiesConceded)
+        : fixture.homePenaltiesConceded || 0,
+      awayPenaltiesWon: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.away.penaltiesWon, fixture.awayPenaltiesWon)
+        : fixture.awayPenaltiesWon || 0,
+      awayPenaltiesConceded: hasEvents
+        ? mergePositiveMatchCentreStat(eventStats.home.penaltiesWon, fixture.awayPenaltiesConceded)
+        : fixture.awayPenaltiesConceded || 0,
       apiFootballStatus: apiFixture.fixture?.status?.short || fixture.apiFootballStatus || null,
     };
   });
