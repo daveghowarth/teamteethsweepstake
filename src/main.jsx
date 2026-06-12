@@ -427,7 +427,7 @@ function Navigation({ activeTab, setActiveTab, isEditableSite, compact = false }
   );
 }
 
-function Dashboard({ tournament, groupTables, qualifiedTeams, stats }) {
+function Dashboard({ tournament, groupTables, stats }) {
   const hydratedFixtures = tournament.fixtures.map((fixture) =>
     hydrateFixtureTeams(fixture, tournament.teams)
   );
@@ -437,7 +437,7 @@ function Dashboard({ tournament, groupTables, qualifiedTeams, stats }) {
     <div className="space-y-6">
       <TodaysMatchesCard matchDay={matchDay} />
 
-      <GroupTables groupTables={groupTables} qualifiedTeams={qualifiedTeams} />
+      <GroupTables groupTables={groupTables} />
       <KnockoutBracket fixtures={getFixturesByStage(tournament.fixtures, "knockout")} />
     </div>
   );
@@ -1819,7 +1819,7 @@ function TeamSelect({ label, value, teams, unavailableTeamIds, onChange }) {
   );
 }
 
-function GroupTables({ groupTables, qualifiedTeams }) {
+function GroupTables({ groupTables }) {
   return (
     <Panel title="Group tables">
       <div className="grid gap-5 xl:grid-cols-2">
@@ -1840,13 +1840,18 @@ function GroupTables({ groupTables, qualifiedTeams }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {table.map((team) => (
-                    <tr key={team.id} className="border-t border-white/10 text-white/85">
+                  {table.map((team, index) => {
+                    const qualificationPositionClass =
+                      index < 2
+                        ? "bg-amber-200/15 text-amber-50"
+                        : index === 2
+                          ? "bg-slate-200/10 text-slate-100"
+                          : "text-white/85";
+
+                    return (
+                    <tr key={team.id} className={`border-t border-white/10 ${qualificationPositionClass}`}>
                       <td className="px-3 py-2 font-semibold">
                         <TeamName team={team} name={team.name} />
-                        {qualifiedTeams.some((qualified) => qualified.id === team.id) && (
-                          <span className="ml-2 rounded bg-cyan-300 px-2 py-0.5 text-xs font-black text-slate-950">Q</span>
-                        )}
                       </td>
                       <td className="text-center">{team.played}</td>
                       <td className="text-center">{team.wins}</td>
@@ -1855,7 +1860,8 @@ function GroupTables({ groupTables, qualifiedTeams }) {
                       <td className="text-center">{team.goalDifference}</td>
                       <td className="text-center font-bold">{team.points}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
