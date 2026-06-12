@@ -488,13 +488,15 @@ Make edits and click **Save live site**.
 
 ## Automatic FIFA Score Sync
 
-The deployed Vercel site includes a scheduled job that runs once per hour:
+The deployed Vercel site includes a scheduled job that runs once per day:
 
 ```text
 /api/cron/sync-fifa
 ```
 
-This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically.
+This job pulls the latest fixture dates, UK kickoff times, match status, and available scores from FIFA, then saves them into Supabase automatically. It is set to run at 7am UTC, which is 8am UK time during British Summer Time.
+
+Vercel Hobby accounts only allow scheduled cron jobs once per day. If you upgrade Vercel later, this can be changed back to hourly.
 
 `CRON_SECRET` is optional. If you set it in Vercel, it can be used for protected manual test calls to the scheduled endpoint. Vercel's own scheduled cron call is also allowed automatically.
 
