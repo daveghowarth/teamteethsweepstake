@@ -75,38 +75,14 @@ export async function syncFifaFixturesToSupabase() {
 }
 
 export async function diagnoseFifaMatchCentre(matchCentreUrl, homeTeamName = "", awayTeamName = "") {
-  const response = await fetch(matchCentreUrl, {
-    headers: {
-      accept: "text/html",
-      "user-agent": "Mozilla/5.0",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`FIFA match centre returned ${response.status}.`);
-  }
-
-  const html = await response.text();
-  const renderedText = htmlToText(html);
-  const liveBlogUpdates = extractFifaLiveBlogUpdates(html);
-  const stats = {
-    ...calculateRenderedMatchStats(renderedText),
-    ...calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName),
-  };
+  const matchId = extractMatchIdFromMatchCentreUrl(matchCentreUrl);
+  const stats = await fetchFifaTeamStats({ IdMatch: matchId });
 
   return {
     url: matchCentreUrl,
-    htmlLength: html.length,
-    textLength: renderedText.length,
+    matchId,
     stats,
-    liveBlogUpdateCount: liveBlogUpdates.length,
-    hasRenderedYellowCards: renderedText.includes("Yellow Cards"),
-    hasRenderedRedCards: renderedText.includes("Red Cards"),
-    yellowCardsTextSample: getTextSample(renderedText, "Yellow Cards"),
-    redCardsTextSample: getTextSample(renderedText, "Red Cards"),
-    firstCardEvents: liveBlogUpdates
-      .filter((update) => /card|booked|sent off/i.test(`${update.headline || ""} ${update.articleBody || ""}`))
-      .slice(0, 8),
+    source: stats.diagnostic?.source || "fifa-fdh-stats",
   };
 }
 
@@ -240,10 +216,9 @@ async function addMatchCentreStatsToCompletedFixtures(fixtures, competitionId, s
 
   for (const fixture of completedFixtures) {
     const matchCentreUrl = buildFifaMatchCentreUrl(fixture, competitionId, seasonId);
-    if (!matchCentreUrl) continue;
 
     try {
-      const stats = await fetchFifaMatchCentreStats(matchCentreUrl, fixture);
+      const stats = await fetchFifaTeamStats(fixture);
       statsByMatchId.set(fixture.IdMatch, { stats, matchCentreUrl });
     } catch (error) {
       statsByMatchId.set(fixture.IdMatch, {
@@ -297,6 +272,78 @@ function parseFifaStageName(stageName) {
   const text = String(stageName || "").toLowerCase();
   if (text.includes("first stage") || text.includes("group")) return "Group";
   return stageName || "";
+}
+
+function extractMatchIdFromMatchCentreUrl(matchCentreUrl) {
+  const match = String(matchCentreUrl).match(/\/match-centre\/match\/\d+\/\d+\/\d+\/(\d+)/);
+
+  if (!match?.[1]) {
+    throw new Error("Could not find a FIFA match ID in the match-centre URL.");
+  }
+
+  return match[1];
+}
+
+async function fetchFifaTeamStats(fifaFixture) {
+  const liveMatch = await fetchFifaLiveMatch(fifaFixture.IdMatch);
+  const fdhMatchId = liveMatch?.Properties?.IdIFES;
+
+  if (!fdhMatchId) {
+    throw new Error("FIFA live match data did not include a stats match ID.");
+  }
+
+  const teamsPayload = await fetchJson(`https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/teams.json`);
+  const homeTeamId = liveMatch.HomeTeam?.IdTeam || fifaFixture.Home?.IdTeam;
+  const awayTeamId = liveMatch.AwayTeam?.IdTeam || fifaFixture.Away?.IdTeam;
+  const homeStats = getFdhTeamStats(teamsPayload, homeTeamId);
+  const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
+
+  return {
+    homeYellowCards: getFdhStat(homeStats, "YellowCards"),
+    homeRedCards: getFdhStat(homeStats, "RedCards"),
+    homePenaltiesWon: getFdhStat(homeStats, "Penalties"),
+    awayYellowCards: getFdhStat(awayStats, "YellowCards"),
+    awayRedCards: getFdhStat(awayStats, "RedCards"),
+    awayPenaltiesWon: getFdhStat(awayStats, "Penalties"),
+    diagnostic: {
+      source: "fifa-fdh-stats",
+      fdhMatchId,
+      homeTeamId,
+      awayTeamId,
+      hasHomeStats: homeStats.length > 0,
+      hasAwayStats: awayStats.length > 0,
+    },
+  };
+}
+
+async function fetchFifaLiveMatch(matchId) {
+  return fetchJson(`https://api.fifa.com/api/v3/live/football/${matchId}?language=en`);
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "Mozilla/5.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FIFA JSON endpoint returned ${response.status}.`);
+  }
+
+  return response.json();
+}
+
+function getFdhTeamStats(teamsPayload, teamId) {
+  return teamsPayload?.[teamId] || teamsPayload?.[String(teamId)] || [];
+}
+
+function getFdhStat(teamStats, statName) {
+  const row = teamStats.find((stat) => stat[0] === statName);
+  const value = Number(row?.[1]);
+
+  return Number.isNaN(value) ? undefined : value;
 }
 
 async function fetchFifaMatchCentreStats(matchCentreUrl, fifaFixture) {
