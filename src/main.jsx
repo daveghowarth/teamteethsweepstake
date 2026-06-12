@@ -1131,6 +1131,31 @@ function ScoreInputCard({ fixture, updateFixtureScore }) {
   );
 }
 
+function formatApiFootballNoFixturesMessage(payload) {
+  const leagueId = payload.leagueId || "unknown";
+  const season = payload.season || "unknown";
+  const candidates = payload.apiMeta?.diagnostics?.worldCupCandidates || [];
+  const configuredLeague = payload.apiMeta?.diagnostics?.configuredLeague;
+  const usefulCandidates = candidates
+    .filter((candidate) => candidate.seasons?.length)
+    .slice(0, 5)
+    .map((candidate) => `${candidate.name} (ID ${candidate.id}, seasons ${candidate.seasons.join(", ")})`);
+
+  let message = `API-Football returned no fixtures for league ${leagueId}, season ${season}.`;
+
+  if (configuredLeague) {
+    message += ` That league is "${configuredLeague.name}" with seasons ${configuredLeague.seasons.join(", ") || "not listed"}.`;
+  }
+
+  if (usefulCandidates.length) {
+    message += ` API-Football suggested these World Cup options: ${usefulCandidates.join("; ")}.`;
+  }
+
+  message += " If none of those include 2026 fixtures, API-Football has not published the 2026 World Cup feed yet.";
+
+  return message;
+}
+
 function MatchStatsInputCard({ fixture, updateFixtureStats }) {
   const homeFields = [
     ["homePenaltiesWon", "Pens won", fixture.homePenaltiesWon],
@@ -1594,7 +1619,7 @@ function SweepstakeAdmin({
       const syncedFixtures = Array.isArray(payload.fixtures) ? payload.fixtures : [];
 
       if (syncedFixtures.length === 0) {
-        throw new Error("API-Football returned no fixtures for this tournament.");
+        throw new Error(formatApiFootballNoFixturesMessage(payload));
       }
 
       setTournament((current) => mapApiFootballDataToTournament(current, syncedFixtures, payload));

@@ -3,14 +3,49 @@ const playedStatusCodes = new Set(["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "I
 
 export async function fetchApiFootballFixturesWithEvents() {
   const config = getApiFootballConfig();
-  const fixturesUrl = new URL("/fixtures", config.baseUrl);
-
-  fixturesUrl.searchParams.set("league", config.leagueId);
-  fixturesUrl.searchParams.set("season", config.season);
-  fixturesUrl.searchParams.set("timezone", "Europe/London");
-
-  const fixturesPayload = await requestApiFootball(fixturesUrl, config.apiKey);
+  let fixturesPayload = await fetchFixturesForLeague(config, config.leagueId);
   const fixtures = Array.isArray(fixturesPayload.response) ? fixturesPayload.response : [];
+
+  if (!fixtures.length) {
+    const discoveryResult = await tryDiscoverWorldCupFixtures(config);
+
+    if (discoveryResult?.fixtures?.length) {
+      fixturesPayload = discoveryResult.payload;
+      const fixturesWithEvents = await addEventsToPlayedFixtures(discoveryResult.fixtures, config);
+
+      return {
+        source: "api-football",
+        leagueId: discoveryResult.leagueId,
+        configuredLeagueId: config.leagueId,
+        season: config.season,
+        fetchedAt: new Date().toISOString(),
+        fixtures: fixturesWithEvents,
+        apiMeta: {
+          results: fixturesWithEvents.length,
+          eventFixtureCount: fixturesWithEvents.filter((fixture) => Array.isArray(fixture.events)).length,
+          errors: fixturesPayload.errors || null,
+          discoveredLeague: discoveryResult.leagueSummary,
+        },
+      };
+    }
+
+    const diagnostics = await getLeagueDiagnostics(config);
+
+    return {
+      source: "api-football",
+      leagueId: config.leagueId,
+      season: config.season,
+      fetchedAt: new Date().toISOString(),
+      fixtures: [],
+      apiMeta: {
+        results: 0,
+        eventFixtureCount: 0,
+        errors: fixturesPayload.errors || null,
+        diagnostics,
+      },
+    };
+  }
+
   const fixturesWithEvents = await addEventsToPlayedFixtures(fixtures, config);
 
   return {
@@ -117,6 +152,87 @@ async function addEventsToPlayedFixtures(fixtures, config) {
       }
     })
   );
+}
+
+async function fetchFixturesForLeague(config, leagueId) {
+  const fixturesUrl = new URL("/fixtures", config.baseUrl);
+
+  fixturesUrl.searchParams.set("league", leagueId);
+  fixturesUrl.searchParams.set("season", config.season);
+  fixturesUrl.searchParams.set("timezone", "Europe/London");
+
+  return requestApiFootball(fixturesUrl, config.apiKey);
+}
+
+async function tryDiscoverWorldCupFixtures(config) {
+  const diagnostics = await getLeagueDiagnostics(config);
+  const candidates = diagnostics.worldCupCandidates.filter((candidate) =>
+    candidate.seasons.includes(Number(config.season))
+  );
+
+  for (const candidate of candidates.slice(0, 8)) {
+    if (String(candidate.id) === String(config.leagueId)) continue;
+
+    try {
+      const payload = await fetchFixturesForLeague(config, String(candidate.id));
+      const fixtures = Array.isArray(payload.response) ? payload.response : [];
+
+      if (fixtures.length) {
+        return {
+          leagueId: String(candidate.id),
+          leagueSummary: candidate,
+          fixtures,
+          payload,
+        };
+      }
+    } catch {
+      // Keep trying other candidates. The final diagnostics will explain what was found.
+    }
+  }
+
+  return null;
+}
+
+async function getLeagueDiagnostics(config) {
+  const diagnostics = {
+    configuredLeague: null,
+    worldCupCandidates: [],
+  };
+
+  try {
+    const configuredUrl = new URL("/leagues", config.baseUrl);
+    configuredUrl.searchParams.set("id", config.leagueId);
+    const configuredPayload = await requestApiFootball(configuredUrl, config.apiKey);
+    diagnostics.configuredLeague = summariseLeague(configuredPayload.response?.[0]);
+  } catch (error) {
+    diagnostics.configuredLeagueError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    const searchUrl = new URL("/leagues", config.baseUrl);
+    searchUrl.searchParams.set("search", "world cup");
+    const searchPayload = await requestApiFootball(searchUrl, config.apiKey);
+    diagnostics.worldCupCandidates = (searchPayload.response || [])
+      .map(summariseLeague)
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    diagnostics.worldCupSearchError = error instanceof Error ? error.message : String(error);
+  }
+
+  return diagnostics;
+}
+
+function summariseLeague(leagueEntry) {
+  if (!leagueEntry?.league) return null;
+
+  return {
+    id: leagueEntry.league.id,
+    name: leagueEntry.league.name,
+    type: leagueEntry.league.type,
+    country: leagueEntry.country?.name || "",
+    seasons: (leagueEntry.seasons || []).map((season) => season.year).filter(Boolean),
+  };
 }
 
 function shouldFetchEventsForFixture(apiFixture) {
