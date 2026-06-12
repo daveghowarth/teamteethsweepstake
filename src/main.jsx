@@ -1143,6 +1143,10 @@ function formatApiFootballNoFixturesMessage(payload) {
 
   let message = `API-Football returned no fixtures for league ${leagueId}, season ${season}.`;
 
+  if (payload.message) {
+    return payload.message;
+  }
+
   if (configuredLeague) {
     message += ` That league is "${configuredLeague.name}" with seasons ${configuredLeague.seasons.join(", ") || "not listed"}.`;
   }
@@ -1617,6 +1621,12 @@ function SweepstakeAdmin({
       }
 
       const syncedFixtures = Array.isArray(payload.fixtures) ? payload.fixtures : [];
+
+      if (!payload.source && !payload.leagueId && !payload.apiMeta) {
+        throw new Error(
+          `API-Football returned an unexpected response: ${JSON.stringify(payload).slice(0, 300)}`
+        );
+      }
 
       if (syncedFixtures.length === 0) {
         throw new Error(formatApiFootballNoFixturesMessage(payload));

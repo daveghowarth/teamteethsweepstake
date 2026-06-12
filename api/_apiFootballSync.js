@@ -37,6 +37,7 @@ export async function fetchApiFootballFixturesWithEvents() {
       season: config.season,
       fetchedAt: new Date().toISOString(),
       fixtures: [],
+      message: buildNoFixturesMessage(config, diagnostics),
       apiMeta: {
         results: 0,
         eventFixtureCount: 0,
@@ -208,19 +209,60 @@ async function getLeagueDiagnostics(config) {
     diagnostics.configuredLeagueError = error instanceof Error ? error.message : String(error);
   }
 
-  try {
-    const searchUrl = new URL("/leagues", config.baseUrl);
-    searchUrl.searchParams.set("search", "world cup");
-    const searchPayload = await requestApiFootball(searchUrl, config.apiKey);
-    diagnostics.worldCupCandidates = (searchPayload.response || [])
-      .map(summariseLeague)
-      .filter(Boolean)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  } catch (error) {
-    diagnostics.worldCupSearchError = error instanceof Error ? error.message : String(error);
+  const searchTerms = ["world cup", "fifa world cup", "fifa"];
+  const candidatesById = new Map();
+  const searchErrors = [];
+
+  for (const term of searchTerms) {
+    try {
+      const searchUrl = new URL("/leagues", config.baseUrl);
+      searchUrl.searchParams.set("search", term);
+      const searchPayload = await requestApiFootball(searchUrl, config.apiKey);
+
+      for (const candidate of (searchPayload.response || []).map(summariseLeague).filter(Boolean)) {
+        candidatesById.set(candidate.id, candidate);
+      }
+    } catch (error) {
+      searchErrors.push(`${term}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  diagnostics.worldCupCandidates = [...candidatesById.values()]
+    .filter((candidate) => candidate.name.toLowerCase().includes("world cup"))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (searchErrors.length) {
+    diagnostics.worldCupSearchError = searchErrors.join("; ");
   }
 
   return diagnostics;
+}
+
+function buildNoFixturesMessage(config, diagnostics) {
+  const usefulCandidates = diagnostics.worldCupCandidates
+    .filter((candidate) => candidate.seasons?.length)
+    .slice(0, 8)
+    .map((candidate) => `${candidate.name} (ID ${candidate.id}, seasons ${candidate.seasons.join(", ")})`);
+
+  let message = `API-Football returned no fixtures for league ${config.leagueId}, season ${config.season}.`;
+
+  if (diagnostics.configuredLeague) {
+    message += ` League ${config.leagueId} is "${diagnostics.configuredLeague.name}" with seasons ${
+      diagnostics.configuredLeague.seasons.join(", ") || "not listed"
+    }.`;
+  }
+
+  if (usefulCandidates.length) {
+    message += ` World Cup options found: ${usefulCandidates.join("; ")}.`;
+  } else if (diagnostics.worldCupSearchError) {
+    message += ` The World Cup search also failed: ${diagnostics.worldCupSearchError}.`;
+  } else {
+    message += " API-Football did not list any World Cup candidates from the search endpoint.";
+  }
+
+  message += " If no listed option includes 2026 fixtures, API-Football has not published the 2026 World Cup feed yet for this key/plan.";
+
+  return message;
 }
 
 function summariseLeague(leagueEntry) {
