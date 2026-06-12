@@ -74,6 +74,42 @@ export async function syncFifaFixturesToSupabase() {
   };
 }
 
+export async function diagnoseFifaMatchCentre(matchCentreUrl, homeTeamName = "", awayTeamName = "") {
+  const response = await fetch(matchCentreUrl, {
+    headers: {
+      accept: "text/html",
+      "user-agent": "Mozilla/5.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FIFA match centre returned ${response.status}.`);
+  }
+
+  const html = await response.text();
+  const renderedText = htmlToText(html);
+  const liveBlogUpdates = extractFifaLiveBlogUpdates(html);
+  const stats = {
+    ...calculateRenderedMatchStats(renderedText),
+    ...calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName),
+  };
+
+  return {
+    url: matchCentreUrl,
+    htmlLength: html.length,
+    textLength: renderedText.length,
+    stats,
+    liveBlogUpdateCount: liveBlogUpdates.length,
+    hasRenderedYellowCards: renderedText.includes("Yellow Cards"),
+    hasRenderedRedCards: renderedText.includes("Red Cards"),
+    yellowCardsTextSample: getTextSample(renderedText, "Yellow Cards"),
+    redCardsTextSample: getTextSample(renderedText, "Red Cards"),
+    firstCardEvents: liveBlogUpdates
+      .filter((update) => /card|booked|sent off/i.test(`${update.headline || ""} ${update.articleBody || ""}`))
+      .slice(0, 8),
+  };
+}
+
 async function loadLiveTournament(supabase) {
   const apiResponse = await fetch(
     `${supabase.url}/rest/v1/tournament_state?id=eq.${stateId}&select=data`,
@@ -243,12 +279,24 @@ function shouldFetchMatchCentreStats(fifaFixture) {
 }
 
 function buildFifaMatchCentreUrl(fifaFixture, competitionId, seasonId) {
-  const stageId = fifaFixture.IdStage || fifaFixture.Stage?.IdStage || fifaFixture.StageId;
+  const stageName = getFifaText(fifaFixture.StageName);
+  const fallbackGroupStageId = process.env.FIFA_GROUP_STAGE_ID || "289273";
+  const stageId =
+    fifaFixture.IdStage ||
+    fifaFixture.Stage?.IdStage ||
+    fifaFixture.StageId ||
+    (parseFifaStageName(stageName) === "Group" ? fallbackGroupStageId : null);
   const matchId = fifaFixture.IdMatch;
 
   if (!stageId || !matchId) return "";
 
   return `https://www.fifa.com/en/match-centre/match/${competitionId}/${seasonId}/${stageId}/${matchId}`;
+}
+
+function parseFifaStageName(stageName) {
+  const text = String(stageName || "").toLowerCase();
+  if (text.includes("first stage") || text.includes("group")) return "Group";
+  return stageName || "";
 }
 
 async function fetchFifaMatchCentreStats(matchCentreUrl, fifaFixture) {
@@ -265,10 +313,20 @@ async function fetchFifaMatchCentreStats(matchCentreUrl, fifaFixture) {
 
   const html = await response.text();
   const liveBlogUpdates = extractFifaLiveBlogUpdates(html);
+  const renderedText = htmlToText(html);
   const homeTeamName = getFifaText(fifaFixture.Home?.TeamName) || fifaFixture.Home?.ShortClubName || "";
   const awayTeamName = getFifaText(fifaFixture.Away?.TeamName) || fifaFixture.Away?.ShortClubName || "";
 
-  return calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName);
+  return {
+    ...calculateRenderedMatchStats(renderedText),
+    ...calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName),
+    diagnostic: {
+      hasLiveBlogUpdates: liveBlogUpdates.length > 0,
+      liveBlogUpdateCount: liveBlogUpdates.length,
+      hasRenderedYellowCards: renderedText.includes("Yellow Cards"),
+      hasRenderedRedCards: renderedText.includes("Red Cards"),
+    },
+  };
 }
 
 function extractFifaLiveBlogUpdates(html) {
@@ -297,14 +355,7 @@ function extractFifaLiveBlogUpdates(html) {
 }
 
 function calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName) {
-  const stats = {
-    homeYellowCards: 0,
-    homeRedCards: 0,
-    homePenaltiesWon: 0,
-    awayYellowCards: 0,
-    awayRedCards: 0,
-    awayPenaltiesWon: 0,
-  };
+  const stats = {};
   const homeMatchName = normaliseTeamName(homeTeamName);
   const awayMatchName = normaliseTeamName(awayTeamName);
 
@@ -323,7 +374,7 @@ function calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName) 
     if (!teamSide) continue;
 
     if (headline.includes("yellow card") || bodyLower.includes("is booked")) {
-      stats[`${teamSide}YellowCards`] += 1;
+      stats[`${teamSide}YellowCards`] = (stats[`${teamSide}YellowCards`] || 0) + 1;
     }
 
     if (
@@ -331,15 +382,54 @@ function calculateMatchCentreStats(liveBlogUpdates, homeTeamName, awayTeamName) 
       headline.includes("second yellow") ||
       bodyLower.includes("is sent off")
     ) {
-      stats[`${teamSide}RedCards`] += 1;
+      stats[`${teamSide}RedCards`] = (stats[`${teamSide}RedCards`] || 0) + 1;
     }
 
     if (isFifaPenaltyEvent(headline, bodyLower)) {
-      stats[`${teamSide}PenaltiesWon`] += 1;
+      stats[`${teamSide}PenaltiesWon`] = (stats[`${teamSide}PenaltiesWon`] || 0) + 1;
     }
   }
 
   return stats;
+}
+
+function calculateRenderedMatchStats(renderedText) {
+  const stats = {};
+  const yellowCards = extractRenderedStatPair(renderedText, "Yellow Cards");
+  const redCards = extractRenderedStatPair(renderedText, "Red Cards");
+  const penaltiesScored = extractRenderedStatPair(renderedText, "Penalties Scored");
+
+  if (yellowCards) {
+    stats.homeYellowCards = yellowCards.home;
+    stats.awayYellowCards = yellowCards.away;
+  }
+
+  if (redCards) {
+    stats.homeRedCards = redCards.home;
+    stats.awayRedCards = redCards.away;
+  }
+
+  if (penaltiesScored) {
+    stats.homePenaltiesWon = penaltiesScored.home;
+    stats.awayPenaltiesWon = penaltiesScored.away;
+  }
+
+  return stats;
+}
+
+function extractRenderedStatPair(renderedText, label) {
+  const labelIndex = renderedText.indexOf(label);
+  if (labelIndex < 0) return null;
+
+  const afterLabel = renderedText.slice(labelIndex + label.length, labelIndex + label.length + 120);
+  const numbers = afterLabel.match(/\b\d+\b/g);
+
+  if (!numbers || numbers.length < 2) return null;
+
+  return {
+    home: Number(numbers[0]),
+    away: Number(numbers[1]),
+  };
 }
 
 function extractTeamNameFromEventBody(body) {
@@ -368,6 +458,23 @@ function decodeHtmlEntities(text) {
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
+}
+
+function htmlToText(html) {
+  return decodeHtmlEntities(
+    String(html)
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+function getTextSample(text, label) {
+  const index = text.indexOf(label);
+  if (index < 0) return "";
+  return text.slice(Math.max(0, index - 80), index + 180);
 }
 
 function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
