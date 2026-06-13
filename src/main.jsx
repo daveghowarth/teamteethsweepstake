@@ -171,7 +171,7 @@ function App() {
   const tournament = isEditableSite ? localTournament : publishedTournament;
   const setTournament = isEditableSite ? setLocalTournament : setPublishedTournament;
   const displayTournament = React.useMemo(
-    () => addSweepstakeOwnersToTeams(applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament))),
+    () => normaliseTournamentForDisplay(tournament),
     [tournament]
   );
 
@@ -2281,9 +2281,16 @@ function getPrizeRules(tournament) {
 }
 
 function getParticipants(tournament) {
-  return ensureParticipantSlots(
+  const participants = ensureParticipantSlots(
     tournament.participants?.length ? tournament.participants : createDefaultTournament().participants
   );
+
+  if (!tournament.teams?.length) return participants;
+
+  return participants.map((participant) => ({
+    ...participant,
+    ...getPickNamesForParticipant(participant, tournament.teams),
+  }));
 }
 
 function getParticipantPicks(participant, teams) {
@@ -2347,10 +2354,11 @@ function getPickNamesForParticipant(participant, teams) {
 }
 
 function normaliseTournamentForStorage(tournament) {
+  const repairedParticipants = getParticipants(tournament);
   const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament));
   const nextTournament = {
     ...baseTournament,
-    participants: getParticipants(baseTournament).map((participant) => ({
+    participants: repairedParticipants.map((participant) => ({
       ...participant,
       ...getPickNamesForParticipant(participant, baseTournament.teams),
     })),
@@ -2358,6 +2366,19 @@ function normaliseTournamentForStorage(tournament) {
   };
 
   return addSweepstakeOwnersToTeams(nextTournament);
+}
+
+function normaliseTournamentForDisplay(tournament) {
+  const repairedParticipants = getParticipants(tournament);
+  const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament));
+
+  return addSweepstakeOwnersToTeams({
+    ...baseTournament,
+    participants: repairedParticipants.map((participant) => ({
+      ...participant,
+      ...getPickNamesForParticipant(participant, baseTournament.teams),
+    })),
+  });
 }
 
 function findTeamByStoredPick(teams, teamId, teamName) {
