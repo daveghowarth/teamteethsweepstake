@@ -325,15 +325,38 @@ function drawContainImage(context, image, x, y, width, height) {
 
 function getParticipantsByTeamId(tournament) {
   const map = new Map();
-  const teamsById = new Map(tournament.teams.map((team) => [team.id, team]));
 
   for (const participant of tournament.participants || []) {
-    for (const teamId of [participant.potATeamId, participant.potBTeamId]) {
-      if (teamsById.has(teamId)) map.set(teamId, participant);
+    const pickedTeams = [
+      findReportTeamByStoredPick(tournament.teams, participant.potATeamId, participant.potATeamName),
+      findReportTeamByStoredPick(tournament.teams, participant.potBTeamId, participant.potBTeamName),
+    ];
+
+    for (const team of pickedTeams) {
+      if (team?.id) map.set(team.id, participant);
     }
   }
 
   return map;
+}
+
+function findReportTeamByStoredPick(teams, teamId, teamName) {
+  const normalisedName = normaliseReportTeamName(teamName);
+  const namedTeam = normalisedName
+    ? teams.find((team) => normaliseReportTeamName(team.name) === normalisedName)
+    : null;
+
+  return namedTeam || teams.find((team) => team.id === teamId) || null;
+}
+
+function normaliseReportTeamName(value = "") {
+  return String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
 }
 
 function getPotTeamsForReport(tournament, pot) {

@@ -190,7 +190,9 @@ function createPlaceholderParticipants(teams) {
       id: `player-${index + 1}`,
       name,
       potATeamId: potATeam.id,
+      potATeamName: potATeam.name,
       potBTeamId: potBTeam.id,
+      potBTeamName: potBTeam.name,
     };
   });
 }

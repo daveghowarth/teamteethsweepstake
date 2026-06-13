@@ -1458,8 +1458,8 @@ function SweepstakeAdmin({
   const potATeams = getPotTeams(tournament.teams, "A");
   const potBTeams = getPotTeams(tournament.teams, "B");
   const completedPlayers = participants.filter((participant) => participant.name.trim()).length;
-  const selectedPotATeamIds = getSelectedTeamIds(participants, "potATeamId");
-  const selectedPotBTeamIds = getSelectedTeamIds(participants, "potBTeamId");
+  const selectedPotATeamIds = getSelectedTeamIds(participants, tournament.teams, "potATeamId", "potATeamName");
+  const selectedPotBTeamIds = getSelectedTeamIds(participants, tournament.teams, "potBTeamId", "potBTeamName");
   const selectedTeamIds = new Set([...selectedPotATeamIds, ...selectedPotBTeamIds]);
 
   function updateParticipant(participantId, changes) {
@@ -1472,6 +1472,7 @@ function SweepstakeAdmin({
 
         return {
           ...nextParticipant,
+          ...getPickNamesForParticipant(nextParticipant, baseTournament.teams),
           avatarUrl:
             nextParticipant.avatarUrl || getDefaultAvatarUrlForName(nextParticipant.name),
         };
@@ -1569,7 +1570,9 @@ function SweepstakeAdmin({
     setLiveStatus({ type: "loading", message: "Saving live site..." });
 
     try {
-      await saveLiveTournamentData(tournament);
+      const tournamentToSave = normaliseTournamentForStorage(tournament);
+      await saveLiveTournamentData(tournamentToSave);
+      setTournament(tournamentToSave);
       setLiveStatus({ type: "success", message: "Saved. The public site now uses this data." });
     } catch (error) {
       setLiveStatus({
@@ -1820,17 +1823,17 @@ function SweepstakeAdmin({
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <TeamSelect
                       label="Pot A team"
-                      value={participant.potATeamId}
+                      value={getParticipantPicks(participant, tournament.teams).potA?.id || participant.potATeamId}
                       teams={potATeams}
                       unavailableTeamIds={selectedTeamIds}
-                      onChange={(value) => updateParticipant(participant.id, { potATeamId: value })}
+                      onChange={(value) => updateParticipant(participant.id, getPickChangesForTeam("A", value, tournament.teams))}
                     />
                     <TeamSelect
                       label="Pot B team"
-                      value={participant.potBTeamId}
+                      value={getParticipantPicks(participant, tournament.teams).potB?.id || participant.potBTeamId}
                       teams={potBTeams}
                       unavailableTeamIds={selectedTeamIds}
-                      onChange={(value) => updateParticipant(participant.id, { potBTeamId: value })}
+                      onChange={(value) => updateParticipant(participant.id, getPickChangesForTeam("B", value, tournament.teams))}
                     />
                   </div>
 
@@ -2285,13 +2288,17 @@ function getParticipants(tournament) {
 
 function getParticipantPicks(participant, teams) {
   return {
-    potA: teams.find((team) => team.id === participant.potATeamId),
-    potB: teams.find((team) => team.id === participant.potBTeamId),
+    potA: findTeamByStoredPick(teams, participant.potATeamId, participant.potATeamName),
+    potB: findTeamByStoredPick(teams, participant.potBTeamId, participant.potBTeamName),
   };
 }
 
-function getSelectedTeamIds(participants, key) {
-  return new Set(participants.map((participant) => participant[key]).filter(Boolean));
+function getSelectedTeamIds(participants, teams, idKey, nameKey) {
+  return new Set(
+    participants
+      .map((participant) => findTeamByStoredPick(teams, participant[idKey], participant[nameKey])?.id)
+      .filter(Boolean)
+  );
 }
 
 function ensureParticipantSlots(participants = []) {
@@ -2303,10 +2310,72 @@ function ensureParticipantSlots(participants = []) {
       id: existingParticipant?.id || `player-${index + 1}`,
       name,
       potATeamId: existingParticipant?.potATeamId || "",
+      potATeamName: existingParticipant?.potATeamName || "",
       potBTeamId: existingParticipant?.potBTeamId || "",
+      potBTeamName: existingParticipant?.potBTeamName || "",
       avatarUrl: existingParticipant?.avatarUrl || getDefaultAvatarUrlForName(name),
     };
   });
+}
+
+function getPickChangesForTeam(pot, teamId, teams) {
+  const team = teams.find((candidate) => candidate.id === teamId);
+
+  if (pot === "A") {
+    return {
+      potATeamId: teamId,
+      potATeamName: team?.name || "",
+    };
+  }
+
+  return {
+    potBTeamId: teamId,
+    potBTeamName: team?.name || "",
+  };
+}
+
+function getPickNamesForParticipant(participant, teams) {
+  const potA = findTeamByStoredPick(teams, participant.potATeamId, participant.potATeamName);
+  const potB = findTeamByStoredPick(teams, participant.potBTeamId, participant.potBTeamName);
+
+  return {
+    potATeamId: potA?.id || participant.potATeamId || "",
+    potATeamName: potA?.name || participant.potATeamName || "",
+    potBTeamId: potB?.id || participant.potBTeamId || "",
+    potBTeamName: potB?.name || participant.potBTeamName || "",
+  };
+}
+
+function normaliseTournamentForStorage(tournament) {
+  const baseTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(tournament));
+  const nextTournament = {
+    ...baseTournament,
+    participants: getParticipants(baseTournament).map((participant) => ({
+      ...participant,
+      ...getPickNamesForParticipant(participant, baseTournament.teams),
+    })),
+    updatedAt: new Date().toISOString(),
+  };
+
+  return addSweepstakeOwnersToTeams(nextTournament);
+}
+
+function findTeamByStoredPick(teams, teamId, teamName) {
+  const namedTeam = findTeamByName(teams, teamName);
+  if (namedTeam) return namedTeam;
+
+  return teams.find((team) => team.id === teamId);
+}
+
+function findTeamByName(teams, teamName) {
+  const normalisedName = normaliseTeamIdentity(teamName);
+  if (!normalisedName) return null;
+
+  return teams.find((team) => normaliseTeamIdentity(team.name) === normalisedName) || null;
+}
+
+function normaliseTeamIdentity(value = "") {
+  return normaliseCsvTeamAlias(normaliseTeamSearchValue(value));
 }
 
 function getDefaultAvatarUrlForName(name = "") {
@@ -2583,6 +2652,8 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
       const playerLabel = name || `Player ${index + 1}`;
       const potATeamId = findTeamIdFromCsvValue(row[potAIndex], groupStageTeams, "Pot A");
       const potBTeamId = findTeamIdFromCsvValue(row[potBIndex], groupStageTeams, "Pot B");
+      const potATeam = groupStageTeams.find((team) => team.id === potATeamId);
+      const potBTeam = groupStageTeams.find((team) => team.id === potBTeamId);
       const avatarUrl =
         avatarIndex === -1
           ? existingParticipant.avatarUrl || ""
@@ -2600,7 +2671,9 @@ function mapPlayerCsvRowsToParticipants(rows, tournament) {
         id: existingParticipant.id || `player-${index + 1}`,
         name,
         potATeamId,
+        potATeamName: potATeam?.name || "",
         potBTeamId,
+        potBTeamName: potBTeam?.name || "",
         avatarUrl,
       };
     })
@@ -2808,9 +2881,11 @@ function addSweepstakeOwnersToTeams(tournament) {
     const ownerName = participant.name.trim();
     if (!ownerName) continue;
 
-    for (const teamId of [participant.potATeamId, participant.potBTeamId]) {
-      if (!teamId) continue;
-      ownerByTeamId.set(teamId, {
+    const picks = getParticipantPicks(participant, tournament.teams);
+
+    for (const team of [picks.potA, picks.potB]) {
+      if (!team?.id) continue;
+      ownerByTeamId.set(team.id, {
         name: ownerName,
         avatarUrl: participant.avatarUrl || "",
       });
