@@ -1455,12 +1455,12 @@ function SweepstakeAdmin({
   const [liveStatus, setLiveStatus] = React.useState(null);
   const [syncStatus, setSyncStatus] = React.useState(null);
   const participants = getParticipants(tournament);
+  const drawAudit = getDrawAudit(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
   const potBTeams = getPotTeams(tournament.teams, "B");
   const completedPlayers = participants.filter((participant) => participant.name.trim()).length;
   const selectedPotATeamIds = getSelectedTeamIds(participants, tournament.teams, "potATeamId", "potATeamName");
   const selectedPotBTeamIds = getSelectedTeamIds(participants, tournament.teams, "potBTeamId", "potBTeamName");
-  const selectedTeamIds = new Set([...selectedPotATeamIds, ...selectedPotBTeamIds]);
 
   function updateParticipant(participantId, changes) {
     setTournament((current) => {
@@ -1797,6 +1797,8 @@ function SweepstakeAdmin({
             <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={importPlayersCsv} />
           </Panel>
 
+          <DrawAuditPanel drawAudit={drawAudit} />
+
           <Panel title="Player setup">
             <div className="grid gap-4 lg:grid-cols-2">
               {participants.map((participant, index) => (
@@ -1825,14 +1827,16 @@ function SweepstakeAdmin({
                       label="Pot A team"
                       value={getParticipantPicks(participant, tournament.teams).potA?.id || participant.potATeamId}
                       teams={potATeams}
-                      unavailableTeamIds={selectedTeamIds}
+                      unavailableTeamIds={selectedPotATeamIds}
+                      pickedByTeamId={drawAudit.potA.pickedByTeamId}
                       onChange={(value) => updateParticipant(participant.id, getPickChangesForTeam("A", value, tournament.teams))}
                     />
                     <TeamSelect
                       label="Pot B team"
                       value={getParticipantPicks(participant, tournament.teams).potB?.id || participant.potBTeamId}
                       teams={potBTeams}
-                      unavailableTeamIds={selectedTeamIds}
+                      unavailableTeamIds={selectedPotBTeamIds}
+                      pickedByTeamId={drawAudit.potB.pickedByTeamId}
                       onChange={(value) => updateParticipant(participant.id, getPickChangesForTeam("B", value, tournament.teams))}
                     />
                   </div>
@@ -1876,7 +1880,148 @@ function SweepstakeAdmin({
   );
 }
 
-function TeamSelect({ label, value, teams, unavailableTeamIds, onChange }) {
+function DrawAuditPanel({ drawAudit }) {
+  const issueCount =
+    drawAudit.potA.unassigned.length +
+    drawAudit.potB.unassigned.length +
+    drawAudit.potA.duplicates.length +
+    drawAudit.potB.duplicates.length +
+    drawAudit.potA.invalidPicks.length +
+    drawAudit.potB.invalidPicks.length;
+
+  function downloadAuditCsv() {
+    const rows = [
+      ["pot", "country", "picked_by", "status"],
+      ...getDrawAuditCsvRows("A", drawAudit.potA),
+      ...getDrawAuditCsvRows("B", drawAudit.potB),
+    ];
+
+    downloadCsv("team-teeth-draw-audit.csv", rows);
+  }
+
+  return (
+    <Panel title="Draw audit">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
+        <p className="max-w-3xl text-sm leading-6 text-amber-50">
+          This checks the draw against the master Pot A and Pot B country lists. Use this before saving
+          the live site: it shows missing countries, duplicate owners, and ghost assignments that can
+          make dropdowns look wrong.
+        </p>
+        <button
+          type="button"
+          className="rounded-lg bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-white"
+          onClick={downloadAuditCsv}
+        >
+          Download audit CSV
+        </button>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <PotAuditCard title="Pot A" audit={drawAudit.potA} />
+        <PotAuditCard title="Pot B" audit={drawAudit.potB} />
+      </div>
+      <div
+        className={`mt-4 rounded-lg border p-4 text-sm font-bold ${
+          issueCount
+            ? "border-red-300/30 bg-red-300/10 text-red-100"
+            : "border-green-300/30 bg-green-300/10 text-green-100"
+        }`}
+      >
+        {issueCount
+          ? `${issueCount} draw issue${issueCount === 1 ? "" : "s"} found. Please repair these before publishing.`
+          : "No draw issues found. Every Pot A and Pot B country has one owner."}
+      </div>
+    </Panel>
+  );
+}
+
+function getDrawAuditCsvRows(pot, audit) {
+  const teamRows = audit.teams.map((team) => {
+    const owners = audit.pickedByTeamId.get(team.id) || [];
+    const status = owners.length === 0 ? "missing" : owners.length > 1 ? "duplicate" : "ok";
+
+    return [pot, team.name, owners.map((owner) => owner.label).join("; "), status];
+  });
+
+  const invalidRows = audit.invalidPicks.map((pick) => [
+    pot,
+    pick.rawValue || "blank",
+    pick.playerLabel,
+    "invalid_or_ghost_pick",
+  ]);
+
+  return [...teamRows, ...invalidRows];
+}
+
+function PotAuditCard({ title, audit }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/12 bg-slate-950/45">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <h3 className="font-black text-white">{title}</h3>
+        <span className="text-xs font-black uppercase tracking-wide text-cyan-100/55">
+          {audit.assignedCount} / {audit.teams.length} assigned
+        </span>
+      </div>
+
+      <div className="max-h-96 overflow-y-auto">
+        <table className="w-full min-w-[460px] text-sm">
+          <thead className="bg-white/8 text-xs uppercase text-cyan-100/60">
+            <tr>
+              <th className="px-3 py-2 text-left">Country</th>
+              <th className="px-3 py-2 text-left">Picked by</th>
+              <th className="px-3 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {audit.teams.map((team) => {
+              const owners = audit.pickedByTeamId.get(team.id) || [];
+              const status =
+                owners.length === 0 ? "Missing" : owners.length > 1 ? "Duplicate" : "OK";
+
+              return (
+                <tr key={team.id} className="border-t border-white/8">
+                  <td className="px-3 py-2 font-bold text-white">
+                    <CompactTeam team={team} />
+                  </td>
+                  <td className="px-3 py-2 text-white/70">
+                    {owners.length ? owners.map((owner) => owner.label).join(", ") : "No player"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-black ${
+                        status === "OK"
+                          ? "bg-green-300/15 text-green-100"
+                          : status === "Duplicate"
+                            ? "bg-red-300/15 text-red-100"
+                            : "bg-amber-300/15 text-amber-100"
+                      }`}
+                    >
+                      {status}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {audit.invalidPicks.length > 0 && (
+        <div className="border-t border-red-300/20 bg-red-300/10 p-4">
+          <p className="text-sm font-black text-red-100">Invalid or ghost picks</p>
+          <ul className="mt-2 space-y-1 text-sm text-red-50/80">
+            {audit.invalidPicks.map((pick) => (
+              <li key={`${pick.participantId}-${pick.rawValue}`}>
+                {pick.playerLabel}: {pick.rawValue || "blank"} is not a valid {title} pick.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeamSelect({ label, value, teams, unavailableTeamIds, pickedByTeamId = new Map(), onChange }) {
   return (
     <label className="block">
       <span className="admin-label">{label}</span>
@@ -1888,11 +2033,12 @@ function TeamSelect({ label, value, teams, unavailableTeamIds, onChange }) {
         <option value="">Choose team</option>
         {teams.map((team) => {
           const isUnavailable = unavailableTeamIds.has(team.id) && team.id !== value;
+          const pickedBy = pickedByTeamId.get(team.id)?.map((owner) => owner.label).join(", ");
 
           return (
           <option key={team.id} value={team.id} disabled={isUnavailable}>
             {formatTeamSelectLabel(team)}
-            {isUnavailable ? " - already picked" : ""}
+            {isUnavailable ? ` - picked by ${pickedBy || "another player"}` : ""}
           </option>
           );
         })}
@@ -2379,6 +2525,67 @@ function normaliseTournamentForDisplay(tournament) {
       ...getPickNamesForParticipant(participant, baseTournament.teams),
     })),
   });
+}
+
+function getDrawAudit(tournament) {
+  const officialTournament = applyOfficialTeamNames(tournament);
+  const teams = officialTournament.teams;
+  const participants = getParticipants(tournament);
+
+  return {
+    potA: getPotDrawAudit("A", teams, participants, "potATeamId", "potATeamName"),
+    potB: getPotDrawAudit("B", teams, participants, "potBTeamId", "potBTeamName"),
+  };
+}
+
+function getPotDrawAudit(pot, teams, participants, idKey, nameKey) {
+  const potTeams = getPotTeams(teams, pot);
+  const potTeamIds = new Set(potTeams.map((team) => team.id));
+  const pickedByTeamId = new Map();
+  const invalidPicks = [];
+
+  for (const [index, participant] of participants.entries()) {
+    const team = findTeamByStoredPick(teams, participant[idKey], participant[nameKey]);
+    const rawValue = participant[nameKey] || participant[idKey] || "";
+    const hasRawPick = Boolean(participant[idKey] || participant[nameKey]);
+
+    if (!hasRawPick) continue;
+
+    if (!team || !potTeamIds.has(team.id)) {
+      invalidPicks.push({
+        participantId: participant.id,
+        playerLabel: getParticipantAuditLabel(participant, index),
+        rawValue,
+      });
+      continue;
+    }
+
+    const owners = pickedByTeamId.get(team.id) || [];
+    owners.push({
+      participantId: participant.id,
+      label: getParticipantAuditLabel(participant, index),
+    });
+    pickedByTeamId.set(team.id, owners);
+  }
+
+  const unassigned = potTeams.filter((team) => !pickedByTeamId.has(team.id));
+  const duplicates = potTeams
+    .map((team) => ({ team, owners: pickedByTeamId.get(team.id) || [] }))
+    .filter((entry) => entry.owners.length > 1);
+
+  return {
+    teams: potTeams,
+    pickedByTeamId,
+    assignedCount: potTeams.filter((team) => pickedByTeamId.has(team.id)).length,
+    unassigned,
+    duplicates,
+    invalidPicks,
+  };
+}
+
+function getParticipantAuditLabel(participant, index) {
+  const name = participant.name?.trim();
+  return name || `Unnamed player ${index + 1}`;
 }
 
 function findTeamByStoredPick(teams, teamId, teamName) {
