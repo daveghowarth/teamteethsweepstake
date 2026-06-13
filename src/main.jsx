@@ -14,7 +14,7 @@ import {
 import "./styles.css";
 import { createDefaultTournament } from "./data/defaultTournament";
 import { createOfficialFixtures } from "./data/officialFixtures.js";
-import { getTeamSweepstakePot, getTeamSweepstakePotRank } from "./data/sweepstakePots.js";
+import { getCanonicalTeamName, getTeamSweepstakePot, getTeamSweepstakePotRank } from "./data/sweepstakePots.js";
 import { getTeamFlagUrl } from "./data/teamFlags.js";
 import {
   calculateDashboardStats,
@@ -2281,7 +2281,7 @@ function TeamMarker({ team, fallbackFlag }) {
 
 function TeamBadge({ team, fallbackFlag }) {
   const [imageFailed, setImageFailed] = React.useState(false);
-  const flagImageUrl = team?.logoUrl || team?.flagUrl;
+  const flagImageUrl = team?.flagUrl || team?.logoUrl;
 
   if (flagImageUrl) {
     return (
@@ -3005,8 +3005,7 @@ function applyOfficialTeamNames(tournament) {
 
     if (!officialTeam) return team;
 
-    const shouldRename = /^Group [A-L] Team [1-4]$/.test(team.name || "");
-    const nextName = shouldRename ? officialTeam.name : team.name;
+    const nextName = officialTeam.name;
     const nextFlag = officialTeam.flagEmoji;
     const nextFlagUrl = getTeamFlagUrl(nextName);
     const nextSweepstakePot = getTeamSweepstakePot(nextName);
@@ -3015,6 +3014,7 @@ function applyOfficialTeamNames(tournament) {
       nextName === team.name &&
       nextFlag === team.flagEmoji &&
       nextFlagUrl === team.flagUrl &&
+      !team.logoUrl &&
       nextSweepstakePot === team.sweepstakePot
     ) {
       return team;
@@ -3026,6 +3026,7 @@ function applyOfficialTeamNames(tournament) {
       name: nextName,
       flagEmoji: nextFlag,
       flagUrl: nextFlagUrl,
+      logoUrl: null,
       sweepstakePot: nextSweepstakePot,
     };
   });
@@ -3408,24 +3409,31 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
 
 function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
   const fifaTeamId = fifaTeam?.IdTeam || null;
-  const fifaTeamName = getFifaText(fifaTeam?.TeamName) || fifaTeam?.ShortClubName || "Team TBC";
+  const fifaTeamName = getCanonicalTeamName(
+    getFifaText(fifaTeam?.TeamName) || fifaTeam?.ShortClubName || "Team TBC"
+  );
   const existingFifaTeam = teams.find((team) => team.fifaTeamId === fifaTeamId && fifaTeamId);
+  const nextFlagEmoji = getFlagEmojiFromCountryCode(fifaTeam?.IdCountry);
+  const nextFlagUrl = getTeamFlagUrl(fifaTeamName);
 
   if (existingFifaTeam) {
     existingFifaTeam.name = fifaTeamName;
-    existingFifaTeam.flagEmoji = getFlagEmojiFromCountryCode(fifaTeam?.IdCountry) || existingFifaTeam.flagEmoji;
-    existingFifaTeam.logoUrl = getFifaFlagUrl(fifaTeam) || existingFifaTeam.logoUrl;
+    existingFifaTeam.flagEmoji = nextFlagEmoji || existingFifaTeam.flagEmoji;
+    existingFifaTeam.flagUrl = nextFlagUrl || existingFifaTeam.flagUrl;
     return existingFifaTeam;
   }
 
   if (group) {
     const groupTeams = teams.filter((team) => team.group === group).sort((a, b) => a.seed - b.seed);
-    const existingByName = groupTeams.find((team) => team.name === fifaTeamName);
+    const existingByName = groupTeams.find(
+      (team) => getCanonicalTeamName(team.name) === fifaTeamName
+    );
 
     if (existingByName) {
       existingByName.fifaTeamId = fifaTeamId;
-      existingByName.flagEmoji = getFlagEmojiFromCountryCode(fifaTeam?.IdCountry) || existingByName.flagEmoji;
-      existingByName.logoUrl = getFifaFlagUrl(fifaTeam) || existingByName.logoUrl;
+      existingByName.name = fifaTeamName;
+      existingByName.flagEmoji = nextFlagEmoji || existingByName.flagEmoji;
+      existingByName.flagUrl = nextFlagUrl || existingByName.flagUrl;
       groupSlotUsage[group]?.add(existingByName.id);
       return existingByName;
     }
@@ -3436,8 +3444,8 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
       groupSlotUsage[group]?.add(nextSlot.id);
       nextSlot.name = fifaTeamName;
       nextSlot.fifaTeamId = fifaTeamId;
-      nextSlot.flagEmoji = getFlagEmojiFromCountryCode(fifaTeam?.IdCountry) || nextSlot.flagEmoji;
-      nextSlot.logoUrl = getFifaFlagUrl(fifaTeam) || nextSlot.logoUrl;
+      nextSlot.flagEmoji = nextFlagEmoji || nextSlot.flagEmoji;
+      nextSlot.flagUrl = nextFlagUrl || nextSlot.flagUrl;
       return nextSlot;
     }
   }
@@ -3453,7 +3461,8 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
     name: fifaTeamName,
     group,
     seed: 99,
-    flagEmoji: getFlagEmojiFromCountryCode(fifaTeam?.IdCountry) || "🌐",
+    flagEmoji: nextFlagEmoji || "🌐",
+    flagUrl: nextFlagUrl,
     sweepstakeOwner: "Not drawn yet",
     logoUrl: getFifaFlagUrl(fifaTeam),
   };

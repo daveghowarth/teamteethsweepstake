@@ -1,3 +1,5 @@
+import { getCanonicalTeamName } from "./sweepstakePots.js";
+
 const teamFlagCodes = {
   Algeria: "dz",
   Argentina: "ar",
@@ -50,6 +52,6 @@ const teamFlagCodes = {
 };
 
 export function getTeamFlagUrl(teamName) {
-  const flagCode = teamFlagCodes[teamName];
+  const flagCode = teamFlagCodes[getCanonicalTeamName(teamName)];
   return flagCode ? `https://flagcdn.com/w40/${flagCode}.png` : null;
 }
