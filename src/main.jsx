@@ -2378,7 +2378,11 @@ function MatchEventSection({ title, events, emptyText }) {
         <ul className="mt-2 space-y-1 text-sm font-semibold text-white/80">
           {events.map((event, index) => (
             <li key={`${title}-${index}`} className="flex justify-between gap-3 rounded bg-slate-950/35 px-3 py-2">
-              <span>{event.player || "Player TBC"}{event.penalty ? " (p)" : ""}</span>
+              <span>
+                {event.player || "Player TBC"}
+                {event.penalty ? " (p)" : ""}
+                {event.ownGoal ? " (og)" : ""}
+              </span>
               <span className="text-cyan-100/70">{formatMatchMinute(event.minute)}</span>
             </li>
           ))}
@@ -2419,6 +2423,7 @@ function normaliseStoredMatchEvents(events, forcedType = "") {
         player: event.player || event.playerName || event.scorer || event.name || "",
         minute: event.minute || event.time || event.elapsed || "",
         penalty: Boolean(event.penalty || event.isPenalty || String(event.detail || "").toLowerCase().includes("penalty")),
+        ownGoal: Boolean(event.ownGoal || event.isOwnGoal || String(event.detail || "").toLowerCase().includes("own goal")),
       };
     })
     .filter(Boolean);

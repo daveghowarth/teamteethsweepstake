@@ -729,10 +729,14 @@ function normaliseFifaEventObject(item, homeContext, awayContext, playerLookup, 
   const joinedKeys = Object.keys(flat).join(" ").toLowerCase();
   const joinedValues = Object.values(flat).join(" ").toLowerCase();
   const combined = `${path} ${joinedKeys} ${joinedValues}`.toLowerCase();
-  const type = getFifaEventType(combined);
+  const type = getFifaEventType(flat, combined, path);
   const playerId = getFifaEventPlayerId(item, flat);
   const playerInfo = playerId ? playerLookup.get(playerId) : null;
-  const side = getFifaEventSide(item, flat, homeContext, awayContext, playerInfo);
+  const pathSide = getFifaEventPathSide(path);
+  const side =
+    type === "goal"
+      ? pathSide || getFifaEventSide(item, flat, homeContext, awayContext, playerInfo)
+      : getFifaEventSide(item, flat, homeContext, awayContext, playerInfo) || pathSide;
   const minute = getFifaEventMinute(flat);
   const hasPlayerSignal = /player|scorer|footballer|athlete|person/.test(joinedKeys);
   const player = getFifaEventPlayerName(item, flat, hasPlayerSignal, playerInfo);
@@ -747,6 +751,7 @@ function normaliseFifaEventObject(item, homeContext, awayContext, playerLookup, 
     player,
     minute,
     penalty: /\bpenalty\b/i.test(combined),
+    ownGoal: type === "goal" && Boolean(pathSide && playerInfo?.side && pathSide !== playerInfo.side),
   };
 }
 
@@ -809,13 +814,29 @@ function addTeamPlayersToLookup(players, team, side) {
   }
 }
 
-function getFifaEventType(text) {
+function getFifaEventType(flat, text, path = "") {
+  const pathText = String(path).toLowerCase();
+  const cardTypeCode = Number(flat.Type || flat.CardType || flat.TypeId || flat.CardTypeId);
+
+  if (/redcards?|red_cards?/.test(pathText)) return "red";
+  if (/yellowcards?|yellow_cards?|cautions?/.test(pathText)) return "yellow";
+  if (/cards?|bookings?/.test(pathText) && !Number.isNaN(cardTypeCode)) {
+    if (cardTypeCode === 1) return "yellow";
+    if (cardTypeCode === 2 || cardTypeCode === 3) return "red";
+  }
   if (/redcards?|red_cards?|sendings?off|sent off/.test(text)) return "red";
   if (/yellowcards?|yellow_cards?|bookings?|cautions?/.test(text)) return "yellow";
   if (/(?:^|[.\s])goals?(?:\[|\s|$)/.test(text)) return "goal";
   if (/second yellow|red card|redcard|sent off/.test(text)) return "red";
   if (/yellow card|yellowcard|booking|booked/.test(text)) return "yellow";
   if (/goal|scorer|scores|penalty scored/.test(text)) return "goal";
+  return "";
+}
+
+function getFifaEventPathSide(path = "") {
+  const text = String(path);
+  if (/\bHomeTeam\b/.test(text)) return "home";
+  if (/\bAwayTeam\b/.test(text)) return "away";
   return "";
 }
 
