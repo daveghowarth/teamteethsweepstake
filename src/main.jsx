@@ -2127,6 +2127,8 @@ function KnockoutBracket({ fixtures }) {
 }
 
 function FixtureGrid({ fixtures, compact = false }) {
+  const [selectedFixture, setSelectedFixture] = React.useState(null);
+
   if (fixtures.length === 0) {
     return <p className="glass-card rounded-lg p-4 text-sm text-white/70">No fixtures to show yet.</p>;
   }
@@ -2140,20 +2142,30 @@ function FixtureGrid({ fixtures, compact = false }) {
           <h3 className="mb-3 font-black text-cyan-100">{formatDate(date)}</h3>
           <div className={`grid gap-3 ${compact ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2"}`}>
             {dateFixtures.map((fixture) => (
-              <FixtureCard key={fixture.id} fixture={fixture} />
+              <FixtureCard key={fixture.id} fixture={fixture} onOpen={() => setSelectedFixture(fixture)} />
             ))}
           </div>
         </div>
       ))}
+      {selectedFixture && (
+        <MatchDetailModal
+          fixture={selectedFixture}
+          onClose={() => setSelectedFixture(null)}
+        />
+      )}
     </div>
   );
 }
 
-function FixtureCard({ fixture }) {
+function FixtureCard({ fixture, onOpen }) {
   const played = fixture.homeScore !== null && fixture.awayScore !== null;
 
   return (
-    <article className="tv-fixture rounded-lg p-4 shadow-sm transition duration-200 hover:-translate-y-1">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="tv-fixture w-full rounded-lg p-4 text-left shadow-sm transition duration-200 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-cyan-300/70"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase text-cyan-200">
@@ -2173,8 +2185,175 @@ function FixtureCard({ fixture }) {
         </div>
         <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
       </div>
-    </article>
+      <p className="mt-3 text-center text-xs font-bold text-cyan-100/50">Click for match details</p>
+    </button>
   );
+}
+
+function MatchDetailModal({ fixture, onClose }) {
+  const played = fixture.homeScore !== null && fixture.awayScore !== null;
+
+  React.useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === "Escape") onClose();
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="match-detail-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg border border-white/12 bg-slate-950 shadow-soft">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-slate-950/95 px-5 py-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-cyan-200">
+              {formatDate(fixture.date)} · {getKickoffUk(fixture)} UK · {getFixtureLabel(fixture)}
+            </p>
+            <h2 id="match-detail-title" className="mt-1 text-2xl font-black text-white">
+              Match details
+            </h2>
+            <p className="mt-1 text-sm text-white/55">{fixture.venue}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Close match details"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-5">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <TeamName team={fixture.homeTeam} name={fixture.homeTeamName} align="right" />
+            <div className="rounded-lg bg-cyan-300 px-5 py-3 text-center text-2xl font-black text-slate-950 shadow-soft">
+              {played ? `${fixture.homeScore} - ${fixture.awayScore}` : "vs"}
+            </div>
+            <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <TeamMatchDetail fixture={fixture} side="home" team={fixture.homeTeam} teamName={fixture.homeTeamName} />
+            <TeamMatchDetail fixture={fixture} side="away" team={fixture.awayTeam} teamName={fixture.awayTeamName} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamMatchDetail({ fixture, side, team, teamName }) {
+  const goals = getFixtureEventList(fixture, side, "goal");
+  const yellowCards = getFixtureEventList(fixture, side, "yellow");
+  const redCards = getFixtureEventList(fixture, side, "red");
+  const yellowTotal = side === "home" ? fixture.homeYellowCards : fixture.awayYellowCards;
+  const redTotal = side === "home" ? fixture.homeRedCards : fixture.awayRedCards;
+
+  return (
+    <section className="rounded-lg border border-white/12 bg-white/8 p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <TeamName team={team} name={teamName} />
+      </div>
+      <MatchEventSection title="Goalscorers" events={goals} emptyText="No goalscorer details saved yet." />
+      <MatchEventSection
+        title={`Yellow Cards${yellowTotal ? ` (${yellowTotal})` : ""}`}
+        events={yellowCards}
+        emptyText={yellowTotal ? "Card total saved, player details not available yet." : "No yellow cards recorded."}
+      />
+      <MatchEventSection
+        title={`Red Cards${redTotal ? ` (${redTotal})` : ""}`}
+        events={redCards}
+        emptyText={redTotal ? "Card total saved, player details not available yet." : "No red cards recorded."}
+      />
+    </section>
+  );
+}
+
+function MatchEventSection({ title, events, emptyText }) {
+  return (
+    <div className="mt-4 first:mt-0">
+      <h3 className="text-xs font-black uppercase tracking-wide text-cyan-100/65">{title}</h3>
+      {events.length ? (
+        <ul className="mt-2 space-y-1 text-sm font-semibold text-white/80">
+          {events.map((event, index) => (
+            <li key={`${title}-${index}`} className="flex justify-between gap-3 rounded bg-slate-950/35 px-3 py-2">
+              <span>{event.player || "Player TBC"}{event.penalty ? " (p)" : ""}</span>
+              <span className="text-cyan-100/70">{formatMatchMinute(event.minute)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 rounded bg-slate-950/35 px-3 py-2 text-sm font-semibold text-white/45">{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function getFixtureEventList(fixture, side, eventType) {
+  const storedEvents = [
+    ...normaliseStoredMatchEvents(fixture.events),
+    ...normaliseStoredMatchEvents(fixture.matchEvents),
+    ...normaliseStoredMatchEvents(fixture.goalEvents, "goal"),
+    ...normaliseStoredMatchEvents(fixture.goals, "goal"),
+    ...normaliseStoredMatchEvents(fixture.yellowCardEvents, "yellow"),
+    ...normaliseStoredMatchEvents(fixture.redCardEvents, "red"),
+  ];
+
+  return storedEvents.filter((event) => event.side === side && event.type === eventType);
+}
+
+function normaliseStoredMatchEvents(events, forcedType = "") {
+  if (!Array.isArray(events)) return [];
+
+  return events
+    .map((event) => {
+      const type = forcedType || normaliseMatchEventType(event.type || event.eventType || event.detail);
+      const side = normaliseMatchEventSide(event.side || event.teamSide || event.team);
+
+      if (!type || !side) return null;
+
+      return {
+        type,
+        side,
+        player: event.player || event.playerName || event.scorer || event.name || "",
+        minute: event.minute || event.time || event.elapsed || "",
+        penalty: Boolean(event.penalty || event.isPenalty || String(event.detail || "").toLowerCase().includes("penalty")),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normaliseMatchEventType(value = "") {
+  const text = String(value).toLowerCase();
+
+  if (text.includes("goal") || text.includes("penalty scored")) return "goal";
+  if (text.includes("yellow")) return "yellow";
+  if (text.includes("red")) return "red";
+  return "";
+}
+
+function normaliseMatchEventSide(value = "") {
+  const text = String(value).toLowerCase();
+
+  if (text.includes("home")) return "home";
+  if (text.includes("away")) return "away";
+  return "";
+}
+
+function formatMatchMinute(minute) {
+  if (minute === null || minute === undefined || minute === "") return "";
+  const text = String(minute);
+  return text.endsWith("'") ? text : `${text}'`;
 }
 
 function FilterBar({ filter, setFilter }) {
