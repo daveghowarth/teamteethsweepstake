@@ -90,6 +90,7 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
   const matchId = extractMatchIdFromMatchCentreUrl(matchCentreUrl);
   const liveMatch = await fetchFifaLiveMatch(matchId);
   const fdhMatchId = liveMatch?.Properties?.IdIFES;
+  const extractedEvents = extractFifaMatchEvents(liveMatch);
   const endpointReports = [];
 
   const liveSummary = summarisePotentialEventPayload(liveMatch);
@@ -97,6 +98,8 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
     url: `https://api.fifa.com/api/v3/live/football/${matchId}?language=en`,
     ok: true,
     source: "fifa-live-match",
+    extractedEventCount: extractedEvents.length,
+    extractedEventsSample: extractedEvents.slice(0, 8),
     ...liveSummary,
   });
 
@@ -118,6 +121,8 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
     matchCentreUrl,
     fifaMatchId: matchId,
     fdhMatchId: fdhMatchId || null,
+    extractedEventCount: extractedEvents.length,
+    extractedEventsSample: extractedEvents.slice(0, 8),
     endpointsChecked: endpointReports.length,
     likelyUsefulEndpoints: endpointReports.filter((report) => report.ok && report.hasLikelyEventData),
     endpointReports,
@@ -233,6 +238,7 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
           matchCentreStats?.homePenaltiesWon,
           previousFixture?.awayPenaltiesConceded
         ),
+        matchEvents: mergeMatchEvents(fifaFixture.matchEvents, previousFixture?.matchEvents),
         apiStatus: fifaFixture.MatchStatus || previousFixture?.apiStatus || null,
         apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName) || previousFixture?.apiRound || null,
       };
@@ -278,7 +284,11 @@ async function addMatchCentreStatsToCompletedFixtures(fixtures, competitionId, s
 
     try {
       const stats = await fetchFifaTeamStats(fixture);
-      statsByMatchId.set(fixture.IdMatch, { stats, matchCentreUrl });
+      statsByMatchId.set(fixture.IdMatch, {
+        stats,
+        matchCentreUrl,
+        matchEvents: Array.isArray(stats.matchEvents) ? stats.matchEvents : [],
+      });
     } catch (error) {
       statsByMatchId.set(fixture.IdMatch, {
         stats: null,
@@ -296,6 +306,7 @@ async function addMatchCentreStatsToCompletedFixtures(fixtures, competitionId, s
       ...fixture,
       matchCentreUrl: matchCentreResult.matchCentreUrl,
       matchCentreStats: matchCentreResult.stats,
+      matchEvents: matchCentreResult.matchEvents || [],
       matchCentreError: matchCentreResult.error || null,
     };
   });
@@ -356,6 +367,7 @@ async function fetchFifaTeamStats(fifaFixture) {
   const awayTeamId = liveMatch.AwayTeam?.IdTeam || fifaFixture.Away?.IdTeam;
   const homeStats = getFdhTeamStats(teamsPayload, homeTeamId);
   const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
+  const matchEvents = extractFifaMatchEvents(liveMatch);
 
   return {
     homeYellowCards: getFdhStat(homeStats, "YellowCards"),
@@ -364,6 +376,7 @@ async function fetchFifaTeamStats(fifaFixture) {
     awayYellowCards: getFdhStat(awayStats, "YellowCards"),
     awayRedCards: getFdhStat(awayStats, "RedCards"),
     awayPenaltiesWon: getFdhStat(awayStats, "Penalties"),
+    matchEvents,
     diagnostic: {
       source: "fifa-fdh-stats",
       fdhMatchId,
@@ -371,6 +384,7 @@ async function fetchFifaTeamStats(fifaFixture) {
       awayTeamId,
       hasHomeStats: homeStats.length > 0,
       hasAwayStats: awayStats.length > 0,
+      matchEventCount: matchEvents.length,
     },
   };
 }
@@ -457,11 +471,12 @@ function findEventLikeItems(payload) {
       .map((key) => (typeof value[key] === "string" || typeof value[key] === "number" ? String(value[key]) : ""))
       .join(" ")
       .toLowerCase();
-    const hasEventSignal =
-      /goal|card|booking|substitution|penalty|minute|elapsed|event|type/.test(joinedKeys) ||
-      /goal|yellow|red card|booking|penalty|sent off/.test(joinedValues);
+    const hasEventSignal = /goal|yellow|red card|redcard|booking|penalty|sent off/.test(
+      `${joinedKeys} ${joinedValues}`
+    );
+    const hasEventDetail = /minute|elapsed|period|time|player|scorer|footballer|athlete|team|idteam/.test(joinedKeys);
 
-    if (hasEventSignal && keys.length) matches.push(value);
+    if (hasEventSignal && hasEventDetail && keys.length) matches.push(value);
 
     for (const key of keys) visit(value[key], depth + 1);
   }
@@ -489,6 +504,202 @@ function summariseEventLikeItem(item) {
   }
 
   return summary;
+}
+
+function extractFifaMatchEvents(liveMatch) {
+  const homeContext = getFifaTeamEventContext(liveMatch?.HomeTeam || liveMatch?.Home);
+  const awayContext = getFifaTeamEventContext(liveMatch?.AwayTeam || liveMatch?.Away);
+  const events = [];
+  const seen = new Set();
+
+  function visit(value, depth = 0) {
+    if (!value || depth > 9) return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item, depth + 1);
+      return;
+    }
+
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+
+    const event = normaliseFifaEventObject(value, homeContext, awayContext);
+    if (event) events.push(event);
+
+    for (const child of Object.values(value)) visit(child, depth + 1);
+  }
+
+  visit(liveMatch);
+
+  return dedupeMatchEvents(events).sort((a, b) => {
+    const aMinute = Number.parseInt(String(a.minute).replace(/\D/g, ""), 10);
+    const bMinute = Number.parseInt(String(b.minute).replace(/\D/g, ""), 10);
+    return (Number.isNaN(aMinute) ? 999 : aMinute) - (Number.isNaN(bMinute) ? 999 : bMinute);
+  });
+}
+
+function normaliseFifaEventObject(item, homeContext, awayContext) {
+  const flat = flattenSimpleValues(item);
+  const joinedKeys = Object.keys(flat).join(" ").toLowerCase();
+  const joinedValues = Object.values(flat).join(" ").toLowerCase();
+  const combined = `${joinedKeys} ${joinedValues}`;
+  const type = getFifaEventType(combined);
+  const side = getFifaEventSide(item, flat, homeContext, awayContext);
+  const minute = getFifaEventMinute(flat);
+  const hasPlayerSignal = /player|scorer|footballer|athlete|person/.test(joinedKeys);
+  const player = getFifaEventPlayerName(item, flat, hasPlayerSignal);
+
+  if (!type || !side) return null;
+  if (!player && !minute) return null;
+  if (!minute && !hasPlayerSignal) return null;
+
+  return {
+    type,
+    side,
+    player,
+    minute,
+    penalty: /\bpenalty\b/i.test(combined),
+  };
+}
+
+function getFifaTeamEventContext(team = {}) {
+  const rawNames = [
+    team.TeamName,
+    team.Name,
+    team.ShortClubName,
+    team.Abbreviation,
+    team.TeamAbbreviation,
+    team.TeamCode,
+  ];
+  const names = rawNames
+    .flatMap((value) => [getReadableFifaText(value), String(value || "")])
+    .map(normaliseTeamName)
+    .filter(Boolean);
+
+  return {
+    id: String(team.IdTeam || team.TeamId || team.Id || ""),
+    names: new Set(names),
+  };
+}
+
+function getFifaEventType(text) {
+  if (/second yellow|red card|redcard|sent off/.test(text)) return "red";
+  if (/yellow card|yellowcard|booking|booked/.test(text)) return "yellow";
+  if (/goal|scorer|scores|penalty scored/.test(text)) return "goal";
+  return "";
+}
+
+function getFifaEventSide(item, flat, homeContext, awayContext) {
+  const teamId = String(
+    flat.IdTeam ||
+      flat.TeamId ||
+      flat.TeamID ||
+      flat.IdCountry ||
+      item?.Team?.IdTeam ||
+      item?.Team?.TeamId ||
+      item?.TeamId ||
+      ""
+  );
+
+  if (teamId && teamId === homeContext.id) return "home";
+  if (teamId && teamId === awayContext.id) return "away";
+
+  const teamName = normaliseTeamName(
+    getReadableFifaText(item?.Team?.TeamName) ||
+      getReadableFifaText(item?.Team?.Name) ||
+      flat.TeamName ||
+      flat.Team ||
+      flat.TeamShortName ||
+      flat.CountryName ||
+      ""
+  );
+
+  if (teamName && homeContext.names.has(teamName)) return "home";
+  if (teamName && awayContext.names.has(teamName)) return "away";
+
+  const sideText = String(flat.Side || flat.TeamSide || flat.HomeAway || flat.HomeOrAway || "").toLowerCase();
+  if (sideText.includes("home")) return "home";
+  if (sideText.includes("away")) return "away";
+
+  return "";
+}
+
+function getFifaEventPlayerName(item, flat, hasPlayerSignal) {
+  const directValue =
+    flat.PlayerName ||
+    flat.Player ||
+    flat.ScorerName ||
+    flat.GoalScorerName ||
+    flat.FootballerName ||
+    flat.AthleteName ||
+    flat.PersonName ||
+    (hasPlayerSignal ? flat.Name : "") ||
+    "";
+
+  return (
+    getReadableFifaText(item?.Player?.Name) ||
+    getReadableFifaText(item?.Player?.PlayerName) ||
+    getReadableFifaText(item?.Scorer?.Name) ||
+    getReadableFifaText(item?.Footballer?.Name) ||
+    String(directValue || "").trim()
+  );
+}
+
+function getFifaEventMinute(flat) {
+  const value =
+    flat.Minute ||
+    flat.MatchMinute ||
+    flat.EventMinute ||
+    flat.Elapsed ||
+    flat.ElapsedTime ||
+    flat.Time ||
+    flat.MatchTime ||
+    flat.PeriodMinute ||
+    "";
+
+  return String(value || "").trim();
+}
+
+function flattenSimpleValues(value, prefix = "", output = {}, depth = 0) {
+  if (!value || depth > 3 || typeof value !== "object") return output;
+
+  for (const [key, child] of Object.entries(value)) {
+    const nextKey = prefix ? `${prefix}.${key}` : key;
+
+    if (child === null || child === undefined) continue;
+    if (typeof child === "string" || typeof child === "number" || typeof child === "boolean") {
+      output[key] = child;
+      output[nextKey] = child;
+      continue;
+    }
+    if (Array.isArray(child)) {
+      const text = getReadableFifaText(child);
+      if (text) {
+        output[key] = text;
+        output[nextKey] = text;
+      }
+      continue;
+    }
+    if (typeof child === "object") flattenSimpleValues(child, nextKey, output, depth + 1);
+  }
+
+  return output;
+}
+
+function getReadableFifaText(value) {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return getFifaText(value);
+}
+
+function dedupeMatchEvents(events) {
+  const seen = new Set();
+
+  return events.filter((event) => {
+    const key = [event.type, event.side, event.player, event.minute, event.penalty ? "p" : ""].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function getFdhTeamStats(teamsPayload, teamId) {
@@ -688,6 +899,12 @@ function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
   }
 
   return existingValue ?? 0;
+}
+
+function mergeMatchEvents(nextEvents, existingEvents) {
+  if (Array.isArray(nextEvents) && nextEvents.length) return nextEvents;
+  if (Array.isArray(existingEvents) && existingEvents.length) return existingEvents;
+  return [];
 }
 
 function getTournamentFixtureTeamPairKey(fixture) {

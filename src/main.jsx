@@ -3677,6 +3677,7 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       ),
       awayPenaltiesConceded:
         mergePositiveMatchCentreStat(matchCentreStats?.homePenaltiesWon, previousFixture?.awayPenaltiesConceded),
+      matchEvents: mergeMatchEvents(fifaFixture.matchEvents, previousFixture?.matchEvents),
       apiStatus: fifaFixture.MatchStatus || null,
       apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName),
     };
@@ -3771,6 +3772,12 @@ function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
   }
 
   return existingValue ?? 0;
+}
+
+function mergeMatchEvents(nextEvents, existingEvents) {
+  if (Array.isArray(nextEvents) && nextEvents.length) return nextEvents;
+  if (Array.isArray(existingEvents) && existingEvents.length) return existingEvents;
+  return [];
 }
 
 function mapApiFootballDataToTournament(currentTournament, apiFixtures, syncPayload) {
