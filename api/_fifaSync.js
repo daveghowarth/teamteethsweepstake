@@ -86,6 +86,44 @@ export async function diagnoseFifaMatchCentre(matchCentreUrl, homeTeamName = "",
   };
 }
 
+export async function diagnoseFifaEventData(matchCentreUrl) {
+  const matchId = extractMatchIdFromMatchCentreUrl(matchCentreUrl);
+  const liveMatch = await fetchFifaLiveMatch(matchId);
+  const fdhMatchId = liveMatch?.Properties?.IdIFES;
+  const endpointReports = [];
+
+  const liveSummary = summarisePotentialEventPayload(liveMatch);
+  endpointReports.push({
+    url: `https://api.fifa.com/api/v3/live/football/${matchId}?language=en`,
+    ok: true,
+    source: "fifa-live-match",
+    ...liveSummary,
+  });
+
+  if (fdhMatchId) {
+    const candidateUrls = [
+      `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/events.json`,
+      `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/timeline.json`,
+      `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/players.json`,
+      `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/player-stats.json`,
+      `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/teams.json`,
+    ];
+
+    for (const url of candidateUrls) {
+      endpointReports.push(await diagnoseFifaJsonEndpoint(url));
+    }
+  }
+
+  return {
+    matchCentreUrl,
+    fifaMatchId: matchId,
+    fdhMatchId: fdhMatchId || null,
+    endpointsChecked: endpointReports.length,
+    likelyUsefulEndpoints: endpointReports.filter((report) => report.ok && report.hasLikelyEventData),
+    endpointReports,
+  };
+}
+
 async function loadLiveTournament(supabase) {
   const apiResponse = await fetch(
     `${supabase.url}/rest/v1/tournament_state?id=eq.${stateId}&select=data`,
@@ -354,6 +392,103 @@ async function fetchJson(url) {
   }
 
   return response.json();
+}
+
+async function diagnoseFifaJsonEndpoint(url) {
+  try {
+    const payload = await fetchJson(url);
+    return {
+      url,
+      ok: true,
+      ...summarisePotentialEventPayload(payload),
+    };
+  } catch (error) {
+    return {
+      url,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function summarisePotentialEventPayload(payload) {
+  const text = JSON.stringify(payload || {});
+  const eventLikeItems = findEventLikeItems(payload).slice(0, 8);
+
+  return {
+    payloadShape: getPayloadShape(payload),
+    payloadLength: text.length,
+    hasGoalText: /\bgoal\b|scorer|goalscorer/i.test(text),
+    hasCardText: /yellow|red card|booking|sent off/i.test(text),
+    hasMinuteText: /\bminute\b|elapsed|period|time/i.test(text),
+    hasPlayerText: /player|footballer|athlete|shirt|jersey/i.test(text),
+    hasLikelyEventData: eventLikeItems.length > 0,
+    sampleEvents: eventLikeItems.map(summariseEventLikeItem),
+  };
+}
+
+function getPayloadShape(payload) {
+  if (Array.isArray(payload)) return `array(${payload.length})`;
+  if (payload && typeof payload === "object") {
+    return `object(${Object.keys(payload).slice(0, 12).join(", ")})`;
+  }
+  return typeof payload;
+}
+
+function findEventLikeItems(payload) {
+  const matches = [];
+  const seen = new Set();
+
+  function visit(value, depth = 0) {
+    if (matches.length >= 40 || depth > 8 || !value) return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item, depth + 1);
+      return;
+    }
+
+    if (typeof value !== "object") return;
+    if (seen.has(value)) return;
+    seen.add(value);
+
+    const keys = Object.keys(value);
+    const joinedKeys = keys.join(" ").toLowerCase();
+    const joinedValues = keys
+      .map((key) => (typeof value[key] === "string" || typeof value[key] === "number" ? String(value[key]) : ""))
+      .join(" ")
+      .toLowerCase();
+    const hasEventSignal =
+      /goal|card|booking|substitution|penalty|minute|elapsed|event|type/.test(joinedKeys) ||
+      /goal|yellow|red card|booking|penalty|sent off/.test(joinedValues);
+
+    if (hasEventSignal && keys.length) matches.push(value);
+
+    for (const key of keys) visit(value[key], depth + 1);
+  }
+
+  visit(payload);
+  return matches;
+}
+
+function summariseEventLikeItem(item) {
+  const summary = {};
+
+  for (const [key, value] of Object.entries(item)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      summary[key] = value;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      summary[key] = `array(${value.length})`;
+      continue;
+    }
+    if (typeof value === "object") {
+      summary[key] = `object(${Object.keys(value).slice(0, 6).join(", ")})`;
+    }
+  }
+
+  return summary;
 }
 
 function getFdhTeamStats(teamsPayload, teamId) {

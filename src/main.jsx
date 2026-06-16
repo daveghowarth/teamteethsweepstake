@@ -1454,6 +1454,7 @@ function SweepstakeAdmin({
   const [adminSection, setAdminSection] = React.useState("players");
   const [liveStatus, setLiveStatus] = React.useState(null);
   const [syncStatus, setSyncStatus] = React.useState(null);
+  const [eventDiagnosticStatus, setEventDiagnosticStatus] = React.useState(null);
   const participants = getParticipants(tournament);
   const drawAudit = getDrawAudit(tournament);
   const potATeams = getPotTeams(tournament.teams, "A");
@@ -1652,6 +1653,58 @@ function SweepstakeAdmin({
     }
   }
 
+  async function diagnoseFifaEvents() {
+    const diagnosticFixture = tournament.fixtures.find(
+      (fixture) =>
+        fixture.fifaMatchCentreUrl &&
+        fixture.homeScore !== null &&
+        fixture.awayScore !== null
+    );
+
+    if (!diagnosticFixture) {
+      setEventDiagnosticStatus({
+        type: "error",
+        message: "No completed FIFA fixture with a match-centre URL is available yet. Run Sync from FIFA first.",
+      });
+      return;
+    }
+
+    setEventDiagnosticStatus({
+      type: "loading",
+      message: `Checking FIFA event data for ${diagnosticFixture.homeTeamName} v ${diagnosticFixture.awayTeamName}...`,
+    });
+
+    try {
+      const response = await fetch(
+        `/api/fifa/diagnose-events?url=${encodeURIComponent(diagnosticFixture.fifaMatchCentreUrl)}`
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "FIFA event diagnostic failed.");
+      }
+
+      const usefulEndpoints = payload.likelyUsefulEndpoints || [];
+      const checkedCount = payload.endpointsChecked || 0;
+      const sampleText = usefulEndpoints[0]?.sampleEvents?.length
+        ? ` Sample: ${JSON.stringify(usefulEndpoints[0].sampleEvents[0]).slice(0, 220)}`
+        : "";
+
+      setEventDiagnosticStatus({
+        type: usefulEndpoints.length ? "success" : "error",
+        message: usefulEndpoints.length
+          ? `Found ${usefulEndpoints.length} likely useful event endpoint(s) after checking ${checkedCount}.${sampleText}`
+          : `Checked ${checkedCount} FIFA endpoints but did not find clear player-level event data.`,
+        payload,
+      });
+    } catch (error) {
+      setEventDiagnosticStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "Could not diagnose FIFA event data.",
+      });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1742,6 +1795,14 @@ function SweepstakeAdmin({
             >
               {syncStatus?.type === "loading" ? "Syncing..." : "Sync cards & penalties"}
             </button>
+            <button
+              type="button"
+              className="rounded-lg bg-white/10 px-5 py-3 text-sm font-black text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60"
+              onClick={diagnoseFifaEvents}
+              disabled={eventDiagnosticStatus?.type === "loading"}
+            >
+              {eventDiagnosticStatus?.type === "loading" ? "Checking..." : "Check FIFA event data"}
+            </button>
           </div>
         </div>
         {syncStatus && (
@@ -1755,6 +1816,19 @@ function SweepstakeAdmin({
             }`}
           >
             {syncStatus.message}
+          </div>
+        )}
+        {eventDiagnosticStatus && (
+          <div
+            className={`mt-4 rounded-lg border p-4 text-sm font-semibold ${
+              eventDiagnosticStatus.type === "success"
+                ? "border-green-300/30 bg-green-300/10 text-green-100"
+                : eventDiagnosticStatus.type === "error"
+                  ? "border-red-300/30 bg-red-300/10 text-red-100"
+                  : "border-white/12 bg-white/10 text-white/80"
+            }`}
+          >
+            {eventDiagnosticStatus.message}
           </div>
         )}
       </Panel>
