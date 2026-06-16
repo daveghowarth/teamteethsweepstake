@@ -700,21 +700,23 @@ function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext, pl
   const events = [];
   const seen = new Set();
 
-  function visit(value, depth = 0) {
+  function visit(value, depth = 0, path = "$") {
     if (!value || depth > 9) return;
 
     if (Array.isArray(value)) {
-      for (const item of value) visit(item, depth + 1);
+      value.forEach((item, index) => visit(item, depth + 1, `${path}[${index}]`));
       return;
     }
 
     if (typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
 
-    const event = normaliseFifaEventObject(value, homeContext, awayContext, playerLookup);
+    const event = normaliseFifaEventObject(value, homeContext, awayContext, playerLookup, path);
     if (event) events.push(event);
 
-    for (const child of Object.values(value)) visit(child, depth + 1);
+    for (const [key, child] of Object.entries(value)) {
+      visit(child, depth + 1, `${path}.${key}`);
+    }
   }
 
   visit(payload);
@@ -722,11 +724,11 @@ function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext, pl
   return events;
 }
 
-function normaliseFifaEventObject(item, homeContext, awayContext, playerLookup) {
+function normaliseFifaEventObject(item, homeContext, awayContext, playerLookup, path = "") {
   const flat = flattenSimpleValues(item);
   const joinedKeys = Object.keys(flat).join(" ").toLowerCase();
   const joinedValues = Object.values(flat).join(" ").toLowerCase();
-  const combined = `${joinedKeys} ${joinedValues}`;
+  const combined = `${path} ${joinedKeys} ${joinedValues}`.toLowerCase();
   const type = getFifaEventType(combined);
   const playerId = getFifaEventPlayerId(item, flat);
   const playerInfo = playerId ? playerLookup.get(playerId) : null;
@@ -808,6 +810,9 @@ function addTeamPlayersToLookup(players, team, side) {
 }
 
 function getFifaEventType(text) {
+  if (/redcards?|red_cards?|sendings?off|sent off/.test(text)) return "red";
+  if (/yellowcards?|yellow_cards?|bookings?|cautions?/.test(text)) return "yellow";
+  if (/(?:^|[.\s])goals?(?:\[|\s|$)/.test(text)) return "goal";
   if (/second yellow|red card|redcard|sent off/.test(text)) return "red";
   if (/yellow card|yellowcard|booking|booked/.test(text)) return "yellow";
   if (/goal|scorer|scores|penalty scored/.test(text)) return "goal";
