@@ -93,7 +93,9 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
   const extractedEvents = extractFifaMatchEvents(liveMatch);
   const homeContext = getFifaTeamEventContext(liveMatch?.HomeTeam || liveMatch?.Home);
   const awayContext = getFifaTeamEventContext(liveMatch?.AwayTeam || liveMatch?.Away);
+  const playerLookup = buildFifaPlayerLookup(liveMatch);
   const searchTerms = parseDiagnosticSearchTerms(search);
+  const searchedPlayers = findSearchedPlayers(liveMatch, searchTerms);
   const endpointReports = [];
 
   const liveSummary = summarisePotentialEventPayload(liveMatch);
@@ -104,6 +106,7 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     extractedEventCount: extractedEvents.length,
     extractedEventsSample: extractedEvents.slice(0, 8),
     searchHits: findPayloadSearchHits(liveMatch, searchTerms),
+    playerReferenceHits: findPlayerReferenceHits(liveMatch, searchedPlayers),
     ...liveSummary,
   });
 
@@ -117,7 +120,9 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     ];
 
     for (const url of candidateUrls) {
-      endpointReports.push(await diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTerms));
+      endpointReports.push(
+        await diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTerms, searchedPlayers, playerLookup)
+      );
     }
   }
 
@@ -128,8 +133,12 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     extractedEventCount: extractedEvents.length,
     extractedEventsSample: extractedEvents.slice(0, 8),
     searchTerms,
+    searchedPlayers,
     searchHits: endpointReports.flatMap((report) =>
       (report.searchHits || []).map((hit) => ({ ...hit, url: report.url }))
+    ),
+    playerReferenceHits: endpointReports.flatMap((report) =>
+      (report.playerReferenceHits || []).map((hit) => ({ ...hit, url: report.url }))
     ),
     endpointsChecked: endpointReports.length,
     likelyUsefulEndpoints: endpointReports.filter((report) => report.ok && report.hasLikelyEventData),
@@ -377,11 +386,14 @@ async function fetchFifaTeamStats(fifaFixture) {
   const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
   const homeContext = getFifaTeamEventContext(liveMatch.HomeTeam || fifaFixture.Home);
   const awayContext = getFifaTeamEventContext(liveMatch.AwayTeam || fifaFixture.Away);
+  const playerLookup = buildFifaPlayerLookup(liveMatch);
   const eventPayloads = await fetchFifaEventPayloads(fdhMatchId);
   const matchEvents = sortMatchEvents(
     dedupeMatchEvents([
-      ...extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext),
-      ...eventPayloads.flatMap((payload) => extractFifaMatchEventsFromPayload(payload, homeContext, awayContext)),
+      ...extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext, playerLookup),
+      ...eventPayloads.flatMap((payload) =>
+        extractFifaMatchEventsFromPayload(payload, homeContext, awayContext, playerLookup)
+      ),
     ])
   );
 
@@ -450,10 +462,17 @@ async function fetchFifaEventPayloads(fdhMatchId) {
   return payloads;
 }
 
-async function diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTerms = []) {
+async function diagnoseFifaJsonEndpoint(
+  url,
+  homeContext,
+  awayContext,
+  searchTerms = [],
+  searchedPlayers = [],
+  playerLookup = new Map()
+) {
   try {
     const payload = await fetchJson(url);
-    const extractedEvents = extractFifaMatchEventsFromPayload(payload, homeContext, awayContext);
+    const extractedEvents = extractFifaMatchEventsFromPayload(payload, homeContext, awayContext, playerLookup);
 
     return {
       url,
@@ -461,6 +480,7 @@ async function diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTer
       extractedEventCount: extractedEvents.length,
       extractedEventsSample: extractedEvents.slice(0, 8),
       searchHits: findPayloadSearchHits(payload, searchTerms),
+      playerReferenceHits: findPlayerReferenceHits(payload, searchedPlayers),
       ...summarisePotentialEventPayload(payload),
     };
   } catch (error) {
@@ -486,7 +506,7 @@ function findPayloadSearchHits(payload, searchTerms) {
   const hits = [];
   const seen = new Set();
 
-  function visit(value, path = "$", depth = 0) {
+  function visit(value, path = "$", depth = 0, parentObject = null, parentPath = "") {
     if (hits.length >= 20 || depth > 8 || value === null || value === undefined) return;
 
     if (typeof value === "string" || typeof value === "number") {
@@ -497,13 +517,15 @@ function findPayloadSearchHits(payload, searchTerms) {
           term: matchedTerm,
           path,
           value: text.slice(0, 180),
+          parentPath,
+          parentObject: parentObject ? summariseEventLikeItem(parentObject) : null,
         });
       }
       return;
     }
 
     if (Array.isArray(value)) {
-      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1));
+      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1, parentObject, parentPath));
       return;
     }
 
@@ -521,7 +543,57 @@ function findPayloadSearchHits(payload, searchTerms) {
     }
 
     for (const [key, child] of Object.entries(value)) {
-      visit(child, `${path}.${key}`, depth + 1);
+      visit(child, `${path}.${key}`, depth + 1, value, path);
+    }
+  }
+
+  visit(payload);
+  return hits;
+}
+
+function findSearchedPlayers(liveMatch, searchTerms) {
+  if (!searchTerms.length) return [];
+
+  return [...buildFifaPlayerLookup(liveMatch).values()]
+    .filter((player) => searchTerms.some((term) => player.name.toLowerCase().includes(term.toLowerCase())))
+    .slice(0, 12);
+}
+
+function findPlayerReferenceHits(payload, searchedPlayers) {
+  if (!searchedPlayers.length) return [];
+
+  const playerById = new Map(searchedPlayers.map((player) => [String(player.id), player]));
+  const hits = [];
+  const seen = new Set();
+
+  function visit(value, path = "$", depth = 0, parentObject = null, parentPath = "") {
+    if (hits.length >= 40 || depth > 8 || value === null || value === undefined) return;
+
+    if (typeof value === "string" || typeof value === "number") {
+      const player = playerById.get(String(value));
+      if (player) {
+        hits.push({
+          player: player.name,
+          playerId: player.id,
+          side: player.side,
+          path,
+          parentPath,
+          parentObject: parentObject ? summariseEventLikeItem(parentObject) : null,
+        });
+      }
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1, parentObject, parentPath));
+      return;
+    }
+
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+
+    for (const [key, child] of Object.entries(value)) {
+      visit(child, `${path}.${key}`, depth + 1, value, path);
     }
   }
 
@@ -613,11 +685,14 @@ function summariseEventLikeItem(item) {
 function extractFifaMatchEvents(liveMatch) {
   const homeContext = getFifaTeamEventContext(liveMatch?.HomeTeam || liveMatch?.Home);
   const awayContext = getFifaTeamEventContext(liveMatch?.AwayTeam || liveMatch?.Away);
+  const playerLookup = buildFifaPlayerLookup(liveMatch);
 
-  return sortMatchEvents(dedupeMatchEvents(extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext)));
+  return sortMatchEvents(
+    dedupeMatchEvents(extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext, playerLookup))
+  );
 }
 
-function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext) {
+function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext, playerLookup = new Map()) {
   const events = [];
   const seen = new Set();
 
@@ -632,7 +707,7 @@ function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext) {
     if (typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
 
-    const event = normaliseFifaEventObject(value, homeContext, awayContext);
+    const event = normaliseFifaEventObject(value, homeContext, awayContext, playerLookup);
     if (event) events.push(event);
 
     for (const child of Object.values(value)) visit(child, depth + 1);
@@ -643,16 +718,18 @@ function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext) {
   return events;
 }
 
-function normaliseFifaEventObject(item, homeContext, awayContext) {
+function normaliseFifaEventObject(item, homeContext, awayContext, playerLookup) {
   const flat = flattenSimpleValues(item);
   const joinedKeys = Object.keys(flat).join(" ").toLowerCase();
   const joinedValues = Object.values(flat).join(" ").toLowerCase();
   const combined = `${joinedKeys} ${joinedValues}`;
   const type = getFifaEventType(combined);
-  const side = getFifaEventSide(item, flat, homeContext, awayContext);
+  const playerId = getFifaEventPlayerId(item, flat);
+  const playerInfo = playerId ? playerLookup.get(playerId) : null;
+  const side = getFifaEventSide(item, flat, homeContext, awayContext, playerInfo);
   const minute = getFifaEventMinute(flat);
   const hasPlayerSignal = /player|scorer|footballer|athlete|person/.test(joinedKeys);
-  const player = getFifaEventPlayerName(item, flat, hasPlayerSignal);
+  const player = getFifaEventPlayerName(item, flat, hasPlayerSignal, playerInfo);
 
   if (!type || !side) return null;
   if (!player && !minute) return null;
@@ -687,6 +764,45 @@ function getFifaTeamEventContext(team = {}) {
   };
 }
 
+function buildFifaPlayerLookup(liveMatch) {
+  const players = new Map();
+
+  addTeamPlayersToLookup(players, liveMatch?.HomeTeam || liveMatch?.Home, "home");
+  addTeamPlayersToLookup(players, liveMatch?.AwayTeam || liveMatch?.Away, "away");
+
+  return players;
+}
+
+function addTeamPlayersToLookup(players, team, side) {
+  if (!team) return;
+
+  const teamPlayers = [
+    ...(Array.isArray(team.Players) ? team.Players : []),
+    ...(Array.isArray(team.Lineup) ? team.Lineup : []),
+    ...(Array.isArray(team.Substitutes) ? team.Substitutes : []),
+  ];
+
+  for (const player of teamPlayers) {
+    const flat = flattenSimpleValues(player);
+    const id = getFifaEventPlayerId(player, flat);
+    const name =
+      getReadableFifaText(player.PlayerName) ||
+      getReadableFifaText(player.Name) ||
+      flat.PlayerName ||
+      flat.Name ||
+      "";
+
+    if (!id || !name) continue;
+
+    players.set(id, {
+      id,
+      name,
+      side,
+      object: summariseEventLikeItem(player),
+    });
+  }
+}
+
 function getFifaEventType(text) {
   if (/second yellow|red card|redcard|sent off/.test(text)) return "red";
   if (/yellow card|yellowcard|booking|booked/.test(text)) return "yellow";
@@ -694,7 +810,9 @@ function getFifaEventType(text) {
   return "";
 }
 
-function getFifaEventSide(item, flat, homeContext, awayContext) {
+function getFifaEventSide(item, flat, homeContext, awayContext, playerInfo = null) {
+  if (playerInfo?.side) return playerInfo.side;
+
   const teamId = String(
     flat.IdTeam ||
       flat.TeamId ||
@@ -729,7 +847,24 @@ function getFifaEventSide(item, flat, homeContext, awayContext) {
   return "";
 }
 
-function getFifaEventPlayerName(item, flat, hasPlayerSignal) {
+function getFifaEventPlayerId(item, flat) {
+  const value =
+    flat.IdPlayer ||
+    flat.PlayerId ||
+    flat.PlayerID ||
+    flat.IdPerson ||
+    flat.PersonId ||
+    flat.IdFootballer ||
+    item?.Player?.IdPlayer ||
+    item?.Player?.PlayerId ||
+    item?.Scorer?.IdPlayer ||
+    item?.Footballer?.IdPlayer ||
+    "";
+
+  return value ? String(value) : "";
+}
+
+function getFifaEventPlayerName(item, flat, hasPlayerSignal, playerInfo = null) {
   const directValue =
     flat.PlayerName ||
     flat.Player ||
@@ -746,6 +881,7 @@ function getFifaEventPlayerName(item, flat, hasPlayerSignal) {
     getReadableFifaText(item?.Player?.PlayerName) ||
     getReadableFifaText(item?.Scorer?.Name) ||
     getReadableFifaText(item?.Footballer?.Name) ||
+    playerInfo?.name ||
     String(directValue || "").trim()
   );
 }

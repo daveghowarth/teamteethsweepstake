@@ -1694,16 +1694,21 @@ function SweepstakeAdmin({
         ...usefulEndpoints.flatMap((endpoint) => endpoint.extractedEventsSample || []),
       ];
       const searchHits = payload.searchHits || [];
+      const playerReferenceHits = payload.playerReferenceHits || [];
       const sampleText = extractedSamples.length
         ? ` Sample: ${JSON.stringify(extractedSamples[0]).slice(0, 220)}`
+        : playerReferenceHits.length
+          ? ` Player ID hit: ${JSON.stringify(playerReferenceHits[0]).slice(0, 220)}`
         : searchHits.length
           ? ` Raw name hit: ${JSON.stringify(searchHits[0]).slice(0, 220)}`
         : "";
 
       setEventDiagnosticStatus({
-        type: extractedCount || extractedSamples.length || searchHits.length ? "success" : "error",
+        type: extractedCount || extractedSamples.length || playerReferenceHits.length || searchHits.length ? "success" : "error",
         message: extractedCount || extractedSamples.length
           ? `Found ${extractedCount || extractedSamples.length} extractable match event(s) after checking ${checkedCount} FIFA endpoint(s).${sampleText}`
+          : playerReferenceHits.length
+            ? `Found FIFA player IDs elsewhere in the data, but they are not extractable yet. ${sampleText}`
           : searchHits.length
             ? `Found the known scorer names in FIFA's raw data, but they are not extractable yet. ${sampleText}`
           : `Checked ${checkedCount} FIFA endpoint(s), but did not find extractable player-level events. It may still only be exposing team totals.`,
