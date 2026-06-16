@@ -105,7 +105,10 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     ok: true,
     source: "fifa-live-match",
     extractedEventCount: extractedEvents.length,
+    extractedEventTypeCounts: countMatchEventTypes(extractedEvents),
     extractedEventsSample: extractedEvents.slice(0, 8),
+    extractedCardEventsSample: extractedEvents.filter((event) => event.type === "yellow" || event.type === "red").slice(0, 8),
+    rawCardSamples: findRawCardSamples(liveMatch),
     searchHits: findPayloadSearchHits(liveMatch, searchTerms),
     playerReferenceHits: findPlayerReferenceHits(liveMatch, searchedPlayers),
     ...liveSummary,
@@ -132,7 +135,12 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     fifaMatchId: matchId,
     fdhMatchId: fdhMatchId || null,
     extractedEventCount: extractedEvents.length,
+    extractedEventTypeCounts: countMatchEventTypes(extractedEvents),
     extractedEventsSample: extractedEvents.slice(0, 8),
+    extractedCardEventsSample: extractedEvents.filter((event) => event.type === "yellow" || event.type === "red").slice(0, 8),
+    rawCardSamples: endpointReports.flatMap((report) =>
+      (report.rawCardSamples || []).map((sample) => ({ ...sample, url: report.url }))
+    ),
     searchTerms,
     searchedPlayers,
     searchHits: endpointReports.flatMap((report) =>
@@ -478,7 +486,10 @@ async function diagnoseFifaJsonEndpoint(
       url,
       ok: true,
       extractedEventCount: extractedEvents.length,
+      extractedEventTypeCounts: countMatchEventTypes(extractedEvents),
       extractedEventsSample: extractedEvents.slice(0, 8),
+      extractedCardEventsSample: extractedEvents.filter((event) => event.type === "yellow" || event.type === "red").slice(0, 8),
+      rawCardSamples: findRawCardSamples(payload),
       searchHits: findPayloadSearchHits(payload, searchTerms),
       playerReferenceHits: findPlayerReferenceHits(payload, searchedPlayers),
       ...summarisePotentialEventPayload(payload),
@@ -603,6 +614,54 @@ function findPlayerReferenceHits(payload, searchedPlayers) {
 
 function isTeamSheetPlayerPath(path) {
   return /(?:HomeTeam|AwayTeam)\.(?:Players|Lineup|Substitutes)\[\d+\]/.test(String(path));
+}
+
+function countMatchEventTypes(events) {
+  return events.reduce(
+    (counts, event) => ({
+      ...counts,
+      [event.type]: (counts[event.type] || 0) + 1,
+    }),
+    {}
+  );
+}
+
+function findRawCardSamples(payload) {
+  const samples = [];
+  const seen = new Set();
+
+  function visit(value, path = "$", depth = 0) {
+    if (samples.length >= 12 || depth > 9 || value === null || value === undefined) return;
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1));
+      return;
+    }
+
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+
+    const pathText = path.toLowerCase();
+    const summary = summariseEventLikeItem(value);
+    const objectText = JSON.stringify(summary).toLowerCase();
+
+    if (
+      isFifaCardPath(pathText) ||
+      /yellow|red card|redcard|booking|booked|caution|sent off|sending off/.test(objectText)
+    ) {
+      samples.push({
+        path,
+        object: summary,
+      });
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      visit(child, `${path}.${key}`, depth + 1);
+    }
+  }
+
+  visit(payload);
+  return samples;
 }
 
 function summarisePotentialEventPayload(payload) {

@@ -1693,10 +1693,19 @@ function SweepstakeAdmin({
         ...(payload.extractedEventsSample || []),
         ...usefulEndpoints.flatMap((endpoint) => endpoint.extractedEventsSample || []),
       ];
+      const extractedCardSamples = [
+        ...(payload.extractedCardEventsSample || []),
+        ...usefulEndpoints.flatMap((endpoint) => endpoint.extractedCardEventsSample || []),
+      ];
+      const rawCardSamples = payload.rawCardSamples || [];
       const searchHits = payload.searchHits || [];
       const playerReferenceHits = payload.playerReferenceHits || [];
-      const sampleText = extractedSamples.length
-        ? ` Sample: ${JSON.stringify(extractedSamples[0]).slice(0, 220)}`
+      const sampleText = extractedCardSamples.length
+        ? ` Card sample: ${JSON.stringify(extractedCardSamples[0]).slice(0, 220)}`
+        : rawCardSamples.length
+          ? ` Raw card sample: ${JSON.stringify(rawCardSamples[0]).slice(0, 220)}`
+        : extractedSamples.length
+          ? ` Sample: ${JSON.stringify(extractedSamples[0]).slice(0, 220)}`
         : playerReferenceHits.length
           ? ` Player ID hit: ${JSON.stringify(playerReferenceHits[0]).slice(0, 220)}`
         : searchHits.length
