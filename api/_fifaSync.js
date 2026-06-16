@@ -661,7 +661,12 @@ function findRawCardSamples(payload) {
   }
 
   visit(payload);
-  return samples;
+  return samples.sort((a, b) => Number(isRawRedCardSample(b)) - Number(isRawRedCardSample(a)));
+}
+
+function isRawRedCardSample(sample) {
+  const text = `${sample.path} ${JSON.stringify(sample.object)}`.toLowerCase();
+  return /red|sending.?off|sent.?off|dismiss/.test(text) || /"type":\s*(2|3)\b/.test(text);
 }
 
 function summarisePotentialEventPayload(payload) {

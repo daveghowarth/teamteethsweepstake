@@ -1698,12 +1698,16 @@ function SweepstakeAdmin({
         ...usefulEndpoints.flatMap((endpoint) => endpoint.extractedCardEventsSample || []),
       ];
       const rawCardSamples = payload.rawCardSamples || [];
+      const eventCounts = payload.extractedEventTypeCounts || {};
+      const countText = eventCounts.yellow || eventCounts.red
+        ? ` Cards counted: ${eventCounts.yellow || 0} yellow, ${eventCounts.red || 0} red.`
+        : "";
       const searchHits = payload.searchHits || [];
       const playerReferenceHits = payload.playerReferenceHits || [];
-      const sampleText = extractedCardSamples.length
-        ? ` Card sample: ${JSON.stringify(extractedCardSamples[0]).slice(0, 220)}`
-        : rawCardSamples.length
+      const sampleText = rawCardSamples.length
           ? ` Raw card sample: ${JSON.stringify(rawCardSamples[0]).slice(0, 220)}`
+        : extractedCardSamples.length
+          ? ` Card sample: ${JSON.stringify(extractedCardSamples[0]).slice(0, 220)}`
         : extractedSamples.length
           ? ` Sample: ${JSON.stringify(extractedSamples[0]).slice(0, 220)}`
         : playerReferenceHits.length
@@ -1715,7 +1719,7 @@ function SweepstakeAdmin({
       setEventDiagnosticStatus({
         type: extractedCount || extractedSamples.length || playerReferenceHits.length || searchHits.length ? "success" : "error",
         message: extractedCount || extractedSamples.length
-          ? `Found ${extractedCount || extractedSamples.length} extractable match event(s) after checking ${checkedCount} FIFA endpoint(s).${sampleText}`
+          ? `Found ${extractedCount || extractedSamples.length} extractable match event(s) after checking ${checkedCount} FIFA endpoint(s).${countText}${sampleText}`
           : playerReferenceHits.length
             ? `Found FIFA player IDs elsewhere in the data, but they are not extractable yet. ${sampleText}`
           : searchHits.length
