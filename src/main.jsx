@@ -3059,6 +3059,25 @@ function hasOutdatedFixtureSchedule(tournament) {
   );
 }
 
+function hasFixtureTeamMismatch(tournament) {
+  const officialFixtures = createOfficialFixtures(tournament.teams);
+  const fixtureByMatchNumber = new Map(
+    (tournament.fixtures || []).map((fixture) => [fixture.matchNumber, fixture])
+  );
+
+  return officialFixtures.some((officialFixture) => {
+    const currentFixture = fixtureByMatchNumber.get(officialFixture.matchNumber);
+
+    return (
+      !currentFixture ||
+      currentFixture.homeTeamId !== officialFixture.homeTeamId ||
+      currentFixture.awayTeamId !== officialFixture.awayTeamId ||
+      currentFixture.homeTeamName !== officialFixture.homeTeamName ||
+      currentFixture.awayTeamName !== officialFixture.awayTeamName
+    );
+  });
+}
+
 function hasOutdatedHomeNationFlags(tournament) {
   return tournament.teams.some((team) => {
     const officialTeam = officialGroupTeams[team.group]?.[Number(team.seed) - 1];
@@ -3067,7 +3086,9 @@ function hasOutdatedHomeNationFlags(tournament) {
 }
 
 function applyOfficialFixtureSchedule(tournament) {
-  if (!hasOutdatedFixtureSchedule(tournament)) return tournament;
+  if (!hasOutdatedFixtureSchedule(tournament) && !hasFixtureTeamMismatch(tournament)) {
+    return tournament;
+  }
 
   const officialFixtures = createOfficialFixtures(tournament.teams);
   const previousByMatchNumber = new Map(
@@ -3078,14 +3099,14 @@ function applyOfficialFixtureSchedule(tournament) {
     ...tournament,
     fixtures: officialFixtures.map((fixture) => {
       const previousFixture = previousByMatchNumber.get(fixture.matchNumber);
-      const sameTeams =
-        previousFixture?.homeTeamId === fixture.homeTeamId &&
-        previousFixture?.awayTeamId === fixture.awayTeamId;
 
-      if (!sameTeams) return fixture;
+      if (!previousFixture) return fixture;
 
       return {
         ...fixture,
+        fifaMatchId: previousFixture.fifaMatchId || fixture.fifaMatchId || null,
+        fifaStageId: previousFixture.fifaStageId || fixture.fifaStageId || null,
+        fifaMatchCentreUrl: previousFixture.fifaMatchCentreUrl || fixture.fifaMatchCentreUrl || null,
         homeScore: previousFixture.homeScore,
         awayScore: previousFixture.awayScore,
         homeYellowCards: previousFixture.homeYellowCards || 0,
@@ -3325,15 +3346,19 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
   const sortedFifaFixtures = [...fifaFixtures].sort((a, b) =>
     (a.MatchNumber || 999) - (b.MatchNumber || 999)
   );
-  const nextTeams = currentTournament.teams.map((team) => ({ ...team }));
+  const repairedTournament = applyOfficialFixtureSchedule(applyOfficialTeamNames(currentTournament));
+  const nextTeams = repairedTournament.teams.map((team) => ({ ...team }));
   const previousFixturesByFifaId = new Map(
-    currentTournament.fixtures
+    repairedTournament.fixtures
       .filter((fixture) => fixture.fifaMatchId)
       .map((fixture) => [fixture.fifaMatchId, fixture])
   );
+  const previousFixturesByMatchNumber = new Map(
+    repairedTournament.fixtures.map((fixture) => [fixture.matchNumber, fixture])
+  );
   const groupSlotUsage = {};
 
-  for (const group of currentTournament.groups) {
+  for (const group of repairedTournament.groups) {
     groupSlotUsage[group] = new Set();
   }
 
@@ -3342,26 +3367,35 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
     const group = stage === "Group" ? parseApiGroup(getFifaText(fifaFixture.GroupName)) : null;
     const homeTeam = mapFifaTeamToLocalTeam(fifaFixture.Home, group, nextTeams, groupSlotUsage);
     const awayTeam = mapFifaTeamToLocalTeam(fifaFixture.Away, group, nextTeams, groupSlotUsage);
-    const previousFixture = previousFixturesByFifaId.get(fifaFixture.IdMatch);
+    const matchNumber = fifaFixture.MatchNumber || index + 1;
+    const previousFixture =
+      previousFixturesByFifaId.get(fifaFixture.IdMatch) || previousFixturesByMatchNumber.get(matchNumber);
     const homeScore = normaliseApiScore(fifaFixture.Home?.Score);
     const awayScore = normaliseApiScore(fifaFixture.Away?.Score);
     const matchCentreStats = fifaFixture.matchCentreStats || null;
+    const officialFixture = previousFixturesByMatchNumber.get(matchNumber);
+    const fixtureHomeTeam = officialFixture?.homeTeamId
+      ? nextTeams.find((team) => team.id === officialFixture.homeTeamId) || homeTeam
+      : homeTeam;
+    const fixtureAwayTeam = officialFixture?.awayTeamId
+      ? nextTeams.find((team) => team.id === officialFixture.awayTeamId) || awayTeam
+      : awayTeam;
 
     return {
       id: `fifa-${fifaFixture.IdMatch || index + 1}`,
       fifaMatchId: fifaFixture.IdMatch || null,
       fifaStageId: fifaFixture.IdStage || previousFixture?.fifaStageId || null,
       fifaMatchCentreUrl: fifaFixture.matchCentreUrl || previousFixture?.fifaMatchCentreUrl || null,
-      matchNumber: fifaFixture.MatchNumber || index + 1,
+      matchNumber,
       stage,
       group,
       date: getFifaFixtureDate(fifaFixture),
       kickoffUk: getFifaKickoffUk(fifaFixture),
       venue: getFifaVenue(fifaFixture),
-      homeTeamId: homeTeam.id,
-      awayTeamId: awayTeam.id,
-      homeTeamName: homeTeam.name,
-      awayTeamName: awayTeam.name,
+      homeTeamId: fixtureHomeTeam.id,
+      awayTeamId: fixtureAwayTeam.id,
+      homeTeamName: fixtureHomeTeam.name,
+      awayTeamName: fixtureAwayTeam.name,
       homeScore: homeScore ?? previousFixture?.homeScore ?? null,
       awayScore: awayScore ?? previousFixture?.awayScore ?? null,
       homeYellowCards: mergePositiveMatchCentreStat(
@@ -3392,7 +3426,7 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
   });
 
   return {
-    ...currentTournament,
+    ...repairedTournament,
     teams: nextTeams,
     fixtures: nextFixtures,
     fifaSync: {
