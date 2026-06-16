@@ -818,6 +818,7 @@ function getFifaEventType(flat, text, path = "") {
   const pathText = String(path).toLowerCase();
   const cardTypeCode = Number(flat.Type || flat.CardType || flat.TypeId || flat.CardTypeId);
 
+  if (isFifaGoalPath(pathText)) return "goal";
   if (/redcards?|red_cards?/.test(pathText)) return "red";
   if (/yellowcards?|yellow_cards?|cautions?/.test(pathText)) return "yellow";
   if (/cards?|bookings?/.test(pathText) && !Number.isNaN(cardTypeCode)) {
@@ -831,6 +832,10 @@ function getFifaEventType(flat, text, path = "") {
   if (/yellow card|yellowcard|booking|booked/.test(text)) return "yellow";
   if (/goal|scorer|scores|penalty scored/.test(text)) return "goal";
   return "";
+}
+
+function isFifaGoalPath(path = "") {
+  return /(?:^|[.\]])goals?\[\d+\]/.test(String(path).toLowerCase());
 }
 
 function getFifaEventPathSide(path = "") {
