@@ -134,47 +134,69 @@ async function saveLiveTournament(supabase, tournament) {
 }
 
 function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
-  const fifaFixturesByTeamPair = new Map(
-    fifaPayload.fixtures.map((fixture) => [getFifaFixtureTeamPairKey(fixture), fixture])
+  const previousFixturesByFifaId = new Map(
+    (tournament.fixtures || [])
+      .filter((fixture) => fixture.fifaMatchId)
+      .map((fixture) => [fixture.fifaMatchId, fixture])
+  );
+  const previousFixturesByTeamPair = new Map(
+    (tournament.fixtures || []).map((fixture) => [getTournamentFixtureTeamPairKey(fixture), fixture])
+  );
+  const teams = (tournament.teams || []).map((team) => ({ ...team }));
+  const fifaFixtures = [...fifaPayload.fixtures].sort((a, b) =>
+    (Number(a.MatchNumber) || 999) - (Number(b.MatchNumber) || 999)
   );
 
   return {
     ...tournament,
-    fixtures: tournament.fixtures.map((fixture) => {
-      const fifaFixture = fifaFixturesByTeamPair.get(getTournamentFixtureTeamPairKey(fixture));
-      if (!fifaFixture) return fixture;
-
+    teams,
+    fixtures: fifaFixtures.map((fifaFixture, index) => {
+      const homeTeam = findTournamentTeamForFifaTeam(fifaFixture.Home, teams);
+      const awayTeam = findTournamentTeamForFifaTeam(fifaFixture.Away, teams);
+      const previousFixture =
+        previousFixturesByFifaId.get(fifaFixture.IdMatch) ||
+        previousFixturesByTeamPair.get(getTeamPairKey(homeTeam.name, awayTeam.name));
       const homeScore = normaliseScore(fifaFixture.Home?.Score);
       const awayScore = normaliseScore(fifaFixture.Away?.Score);
       const matchCentreStats = fifaFixture.matchCentreStats || null;
+      const matchNumber = Number(fifaFixture.MatchNumber) || index + 1;
+      const group = parseFifaGroupName(getFifaText(fifaFixture.GroupName));
+      const stage = group ? "Group" : parseFifaStageName(getFifaText(fifaFixture.StageName));
 
       return {
-        ...fixture,
-        fifaMatchId: fifaFixture.IdMatch || fixture.fifaMatchId || null,
-        fifaStageId: fifaFixture.IdStage || fixture.fifaStageId || null,
-        fifaMatchCentreUrl: fifaFixture.matchCentreUrl || fixture.fifaMatchCentreUrl || null,
-        fifaMatchNumber: fifaFixture.MatchNumber || fixture.fifaMatchNumber || null,
-        date: getFifaFixtureDate(fifaFixture) || fixture.date,
-        kickoffUk: getFifaKickoffUk(fifaFixture) || fixture.kickoffUk,
-        venue: getFifaVenue(fifaFixture) || fixture.venue,
-        homeScore: homeScore ?? fixture.homeScore ?? null,
-        awayScore: awayScore ?? fixture.awayScore ?? null,
-        homeYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.homeYellowCards, fixture.homeYellowCards),
-        homeRedCards: mergePositiveMatchCentreStat(matchCentreStats?.homeRedCards, fixture.homeRedCards),
-        awayYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.awayYellowCards, fixture.awayYellowCards),
-        awayRedCards: mergePositiveMatchCentreStat(matchCentreStats?.awayRedCards, fixture.awayRedCards),
-        homePenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.homePenaltiesWon, fixture.homePenaltiesWon),
+        id: `fifa-${fifaFixture.IdMatch || matchNumber}`,
+        fifaMatchId: fifaFixture.IdMatch || previousFixture?.fifaMatchId || null,
+        fifaStageId: fifaFixture.IdStage || previousFixture?.fifaStageId || null,
+        fifaMatchCentreUrl: fifaFixture.matchCentreUrl || previousFixture?.fifaMatchCentreUrl || null,
+        fifaMatchNumber: fifaFixture.MatchNumber || previousFixture?.fifaMatchNumber || null,
+        matchNumber,
+        stage,
+        group,
+        date: getFifaFixtureDate(fifaFixture) || previousFixture?.date || "",
+        kickoffUk: getFifaKickoffUk(fifaFixture) || previousFixture?.kickoffUk || "",
+        venue: getFifaVenue(fifaFixture) || previousFixture?.venue || "",
+        homeTeamId: homeTeam.id,
+        awayTeamId: awayTeam.id,
+        homeTeamName: homeTeam.name,
+        awayTeamName: awayTeam.name,
+        homeScore,
+        awayScore,
+        homeYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.homeYellowCards, previousFixture?.homeYellowCards),
+        homeRedCards: mergePositiveMatchCentreStat(matchCentreStats?.homeRedCards, previousFixture?.homeRedCards),
+        awayYellowCards: mergePositiveMatchCentreStat(matchCentreStats?.awayYellowCards, previousFixture?.awayYellowCards),
+        awayRedCards: mergePositiveMatchCentreStat(matchCentreStats?.awayRedCards, previousFixture?.awayRedCards),
+        homePenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.homePenaltiesWon, previousFixture?.homePenaltiesWon),
         homePenaltiesConceded: mergePositiveMatchCentreStat(
           matchCentreStats?.awayPenaltiesWon,
-          fixture.homePenaltiesConceded
+          previousFixture?.homePenaltiesConceded
         ),
-        awayPenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.awayPenaltiesWon, fixture.awayPenaltiesWon),
+        awayPenaltiesWon: mergePositiveMatchCentreStat(matchCentreStats?.awayPenaltiesWon, previousFixture?.awayPenaltiesWon),
         awayPenaltiesConceded: mergePositiveMatchCentreStat(
           matchCentreStats?.homePenaltiesWon,
-          fixture.awayPenaltiesConceded
+          previousFixture?.awayPenaltiesConceded
         ),
-        apiStatus: fifaFixture.MatchStatus || fixture.apiStatus || null,
-        apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName) || fixture.apiRound || null,
+        apiStatus: fifaFixture.MatchStatus || previousFixture?.apiStatus || null,
+        apiRound: getFifaText(fifaFixture.GroupName) || getFifaText(fifaFixture.StageName) || previousFixture?.apiRound || null,
       };
     }),
     fifaSync: {
@@ -550,6 +572,31 @@ function getTeamPairKey(homeTeamName, awayTeamName) {
 
 function getFifaTeamName(fifaTeam) {
   return getFifaText(fifaTeam?.TeamName) || fifaTeam?.ShortClubName || "";
+}
+
+function findTournamentTeamForFifaTeam(fifaTeam, teams) {
+  const fifaTeamName = getFifaTeamName(fifaTeam);
+  const normalisedFifaTeamName = normaliseTeamName(fifaTeamName);
+  const existingTeam = teams.find((team) => normaliseTeamName(team.name) === normalisedFifaTeamName);
+
+  if (existingTeam) {
+    existingTeam.fifaTeamId = fifaTeam?.IdTeam || existingTeam.fifaTeamId || null;
+    return existingTeam;
+  }
+
+  return {
+    id: fifaTeam?.IdTeam ? `fifa-team-${fifaTeam.IdTeam}` : `fifa-team-${normalisedFifaTeamName || "unknown"}`,
+    fifaTeamId: fifaTeam?.IdTeam || null,
+    name: fifaTeamName || "Team TBC",
+    group: null,
+    seed: 99,
+    sweepstakeOwner: "Not drawn yet",
+  };
+}
+
+function parseFifaGroupName(groupName = "") {
+  const match = String(groupName).match(/\bGroup\s+([A-L])\b/i);
+  return match?.[1]?.toUpperCase() || null;
 }
 
 function normaliseTeamName(name = "") {

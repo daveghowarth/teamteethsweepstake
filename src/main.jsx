@@ -3086,9 +3086,7 @@ function hasOutdatedHomeNationFlags(tournament) {
 }
 
 function applyOfficialFixtureSchedule(tournament) {
-  if (!hasOutdatedFixtureSchedule(tournament) && !hasFixtureTeamMismatch(tournament)) {
-    return tournament;
-  }
+  if (!hasOutdatedFixtureSchedule(tournament)) return tournament;
 
   const officialFixtures = createOfficialFixtures(tournament.teams);
   const previousByMatchNumber = new Map(
@@ -3402,8 +3400,8 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       awayTeamId: awayTeam.id,
       homeTeamName: homeTeam.name,
       awayTeamName: awayTeam.name,
-      homeScore: homeScore ?? previousFixture?.homeScore ?? null,
-      awayScore: awayScore ?? previousFixture?.awayScore ?? null,
+      homeScore,
+      awayScore,
       homeYellowCards: mergePositiveMatchCentreStat(
         matchCentreStats?.homeYellowCards,
         previousFixture?.homeYellowCards
