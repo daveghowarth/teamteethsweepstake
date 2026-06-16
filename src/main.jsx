@@ -1710,7 +1710,7 @@ function SweepstakeAdmin({
           : playerReferenceHits.length
             ? `Found FIFA player IDs elsewhere in the data, but they are not extractable yet. ${sampleText}`
           : searchHits.length
-            ? `Found the known scorer names in FIFA's raw data, but they are not extractable yet. ${sampleText}`
+            ? `Found the known scorer names in FIFA's team sheet, but not yet in a goal/card event. ${sampleText}`
           : `Checked ${checkedCount} FIFA endpoint(s), but did not find extractable player-level events. It may still only be exposing team totals.`,
         payload,
       });

@@ -571,7 +571,7 @@ function findPlayerReferenceHits(payload, searchedPlayers) {
 
     if (typeof value === "string" || typeof value === "number") {
       const player = playerById.get(String(value));
-      if (player) {
+      if (player && !isTeamSheetPlayerPath(path)) {
         hits.push({
           player: player.name,
           playerId: player.id,
@@ -599,6 +599,10 @@ function findPlayerReferenceHits(payload, searchedPlayers) {
 
   visit(payload);
   return hits;
+}
+
+function isTeamSheetPlayerPath(path) {
+  return /(?:HomeTeam|AwayTeam)\.(?:Players|Lineup|Substitutes)\[\d+\]/.test(String(path));
 }
 
 function summarisePotentialEventPayload(payload) {
