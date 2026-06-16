@@ -138,9 +138,15 @@ export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
     extractedEventTypeCounts: countMatchEventTypes(extractedEvents),
     extractedEventsSample: extractedEvents.slice(0, 8),
     extractedCardEventsSample: extractedEvents.filter((event) => event.type === "yellow" || event.type === "red").slice(0, 8),
-    rawCardSamples: endpointReports.flatMap((report) =>
+    rawCardSamples: [
+      ...findRawCardSamples(liveMatch).map((sample) => ({
+        ...sample,
+        url: `https://api.fifa.com/api/v3/live/football/${matchId}?language=en`,
+      })),
+      ...endpointReports.flatMap((report) =>
       (report.rawCardSamples || []).map((sample) => ({ ...sample, url: report.url }))
-    ),
+      ),
+    ],
     searchTerms,
     searchedPlayers,
     searchHits: endpointReports.flatMap((report) =>
@@ -644,13 +650,12 @@ function findRawCardSamples(payload) {
     const pathText = path.toLowerCase();
     const summary = summariseEventLikeItem(value);
     const objectText = JSON.stringify(summary).toLowerCase();
+    const interpretedType = getFifaEventType(flattenSimpleValues(value), `${pathText} ${objectText}`, pathText);
 
-    if (
-      isFifaCardPath(pathText) ||
-      /yellow|red card|redcard|booking|booked|caution|sent off|sending off/.test(objectText)
-    ) {
+    if (isRawCardEventObject(pathText, summary, objectText, interpretedType)) {
       samples.push({
         path,
+        interpretedType,
         object: summary,
       });
     }
@@ -662,6 +667,18 @@ function findRawCardSamples(payload) {
 
   visit(payload);
   return samples.sort((a, b) => Number(isRawRedCardSample(b)) - Number(isRawRedCardSample(a)));
+}
+
+function isRawCardEventObject(pathText, summary, objectText, interpretedType) {
+  const hasEventPlayer = Boolean(summary.IdPlayer || summary.PlayerId || summary.PlayerID || summary.IdPerson);
+  const hasEventMinute = Boolean(summary.Minute || summary.MatchMinute || summary.EventMinute || summary.Elapsed);
+  const hasCardPath = isFifaCardPath(pathText);
+  const hasCardText = /yellow|red card|redcard|booking|booked|caution|sent off|sending off/.test(objectText);
+  const isArrayItem = /\[\d+\]$/.test(pathText);
+
+  if (!isArrayItem && !hasEventPlayer && !hasEventMinute) return false;
+  if (interpretedType === "yellow" || interpretedType === "red") return true;
+  return (hasCardPath || hasCardText) && (hasEventPlayer || hasEventMinute);
 }
 
 function isRawRedCardSample(sample) {
