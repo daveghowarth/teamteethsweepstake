@@ -43,6 +43,7 @@ export async function fetchFifaFixtures() {
     apiMeta: {
       results: fixturesWithMatchCentreStats.length,
       matchCentreStatCount: fixturesWithMatchCentreStats.filter((fixture) => fixture.matchCentreStats).length,
+      matchEventFixtureCount: fixturesWithMatchCentreStats.filter((fixture) => fixture.matchEvents?.length).length,
       continuationToken: payload.ContinuationToken,
     },
   };
@@ -267,6 +268,7 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
       fetchedAt: fifaPayload.fetchedAt,
       fixtureCount: fifaPayload.fixtures.length,
       matchCentreStatCount: fifaPayload.apiMeta?.matchCentreStatCount || 0,
+      matchEventFixtureCount: fifaPayload.apiMeta?.matchEventFixtureCount || 0,
       automatic: true,
     },
     updatedAt: new Date().toISOString(),
@@ -374,20 +376,12 @@ function extractMatchIdFromMatchCentreUrl(matchCentreUrl) {
 async function fetchFifaTeamStats(fifaFixture) {
   const liveMatch = await fetchFifaLiveMatch(fifaFixture.IdMatch);
   const fdhMatchId = liveMatch?.Properties?.IdIFES;
-
-  if (!fdhMatchId) {
-    throw new Error("FIFA live match data did not include a stats match ID.");
-  }
-
-  const teamsPayload = await fetchJson(`https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/teams.json`);
   const homeTeamId = liveMatch.HomeTeam?.IdTeam || fifaFixture.Home?.IdTeam;
   const awayTeamId = liveMatch.AwayTeam?.IdTeam || fifaFixture.Away?.IdTeam;
-  const homeStats = getFdhTeamStats(teamsPayload, homeTeamId);
-  const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
   const homeContext = getFifaTeamEventContext(liveMatch.HomeTeam || fifaFixture.Home);
   const awayContext = getFifaTeamEventContext(liveMatch.AwayTeam || fifaFixture.Away);
   const playerLookup = buildFifaPlayerLookup(liveMatch);
-  const eventPayloads = await fetchFifaEventPayloads(fdhMatchId);
+  const eventPayloads = fdhMatchId ? await fetchFifaEventPayloads(fdhMatchId) : [];
   const matchEvents = sortMatchEvents(
     dedupeMatchEvents([
       ...extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext, playerLookup),
@@ -396,6 +390,11 @@ async function fetchFifaTeamStats(fifaFixture) {
       ),
     ])
   );
+  const teamsPayload = fdhMatchId
+    ? await fetchOptionalJson(`https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/teams.json`)
+    : null;
+  const homeStats = getFdhTeamStats(teamsPayload, homeTeamId);
+  const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
 
   return {
     homeYellowCards: getFdhStat(homeStats, "YellowCards"),
@@ -407,9 +406,10 @@ async function fetchFifaTeamStats(fifaFixture) {
     matchEvents,
     diagnostic: {
       source: "fifa-fdh-stats",
-      fdhMatchId,
+      fdhMatchId: fdhMatchId || null,
       homeTeamId,
       awayTeamId,
+      hasFdhStatsPayload: Boolean(teamsPayload),
       hasHomeStats: homeStats.length > 0,
       hasAwayStats: awayStats.length > 0,
       matchEventCount: matchEvents.length,
