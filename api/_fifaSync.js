@@ -134,16 +134,14 @@ async function saveLiveTournament(supabase, tournament) {
 }
 
 function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
-  const fifaFixturesByMatchNumber = new Map(
-    fifaPayload.fixtures
-      .filter((fixture) => fixture.MatchNumber)
-      .map((fixture) => [Number(fixture.MatchNumber), fixture])
+  const fifaFixturesByTeamPair = new Map(
+    fifaPayload.fixtures.map((fixture) => [getFifaFixtureTeamPairKey(fixture), fixture])
   );
 
   return {
     ...tournament,
     fixtures: tournament.fixtures.map((fixture) => {
-      const fifaFixture = fifaFixturesByMatchNumber.get(Number(fixture.matchNumber));
+      const fifaFixture = fifaFixturesByTeamPair.get(getTournamentFixtureTeamPairKey(fixture));
       if (!fifaFixture) return fixture;
 
       const homeScore = normaliseScore(fifaFixture.Home?.Score);
@@ -155,6 +153,7 @@ function mergeFifaFixturesIntoTournament(tournament, fifaPayload) {
         fifaMatchId: fifaFixture.IdMatch || fixture.fifaMatchId || null,
         fifaStageId: fifaFixture.IdStage || fixture.fifaStageId || null,
         fifaMatchCentreUrl: fifaFixture.matchCentreUrl || fixture.fifaMatchCentreUrl || null,
+        fifaMatchNumber: fifaFixture.MatchNumber || fixture.fifaMatchNumber || null,
         date: getFifaFixtureDate(fifaFixture) || fixture.date,
         kickoffUk: getFifaKickoffUk(fifaFixture) || fixture.kickoffUk,
         venue: getFifaVenue(fifaFixture) || fixture.venue,
@@ -532,6 +531,25 @@ function mergePositiveMatchCentreStat(matchCentreValue, existingValue) {
   }
 
   return existingValue ?? 0;
+}
+
+function getTournamentFixtureTeamPairKey(fixture) {
+  return getTeamPairKey(fixture.homeTeamName, fixture.awayTeamName);
+}
+
+function getFifaFixtureTeamPairKey(fifaFixture) {
+  const homeTeamName = getFifaTeamName(fifaFixture.Home);
+  const awayTeamName = getFifaTeamName(fifaFixture.Away);
+
+  return getTeamPairKey(homeTeamName, awayTeamName);
+}
+
+function getTeamPairKey(homeTeamName, awayTeamName) {
+  return `${normaliseTeamName(homeTeamName)}::${normaliseTeamName(awayTeamName)}`;
+}
+
+function getFifaTeamName(fifaTeam) {
+  return getFifaText(fifaTeam?.TeamName) || fifaTeam?.ShortClubName || "";
 }
 
 function normaliseTeamName(name = "") {

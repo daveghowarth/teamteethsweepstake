@@ -3099,8 +3099,11 @@ function applyOfficialFixtureSchedule(tournament) {
     ...tournament,
     fixtures: officialFixtures.map((fixture) => {
       const previousFixture = previousByMatchNumber.get(fixture.matchNumber);
+      const sameTeams =
+        previousFixture?.homeTeamId === fixture.homeTeamId &&
+        previousFixture?.awayTeamId === fixture.awayTeamId;
 
-      if (!previousFixture) return fixture;
+      if (!previousFixture || !sameTeams) return fixture;
 
       return {
         ...fixture,
