@@ -683,7 +683,7 @@ function isRawCardEventObject(pathText, summary, objectText, interpretedType) {
 
 function isRawRedCardSample(sample) {
   const text = `${sample.path} ${JSON.stringify(sample.object)}`.toLowerCase();
-  return /red|sending.?off|sent.?off|dismiss/.test(text) || /"type":\s*(2|3)\b/.test(text);
+  return /red|sending.?off|sent.?off|dismiss/.test(text) || /"(?:card|type)":\s*(2|3)\b/.test(text);
 }
 
 function summarisePotentialEventPayload(payload) {
@@ -897,7 +897,7 @@ function addTeamPlayersToLookup(players, team, side) {
 
 function getFifaEventType(flat, text, path = "") {
   const pathText = String(path).toLowerCase();
-  const cardTypeCode = Number(flat.Type || flat.CardType || flat.TypeId || flat.CardTypeId);
+  const cardTypeCode = Number(flat.Card || flat.Type || flat.CardType || flat.TypeId || flat.CardTypeId);
 
   if (isFifaGoalPath(pathText)) return "goal";
   if (isFifaCardPath(pathText) && !Number.isNaN(cardTypeCode)) {
