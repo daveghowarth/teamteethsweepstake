@@ -1676,7 +1676,7 @@ function SweepstakeAdmin({
 
     try {
       const response = await fetch(
-        `/api/fifa/diagnose-events?url=${encodeURIComponent(diagnosticFixture.fifaMatchCentreUrl)}`
+        `/api/fifa/diagnose-events?url=${encodeURIComponent(diagnosticFixture.fifaMatchCentreUrl)}&search=${encodeURIComponent("Quinones,Quiñones,Jimenez,Jiménez")}`
       );
       const payload = await response.json();
 
@@ -1686,15 +1686,27 @@ function SweepstakeAdmin({
 
       const usefulEndpoints = payload.likelyUsefulEndpoints || [];
       const checkedCount = payload.endpointsChecked || 0;
-      const sampleText = usefulEndpoints[0]?.sampleEvents?.length
-        ? ` Sample: ${JSON.stringify(usefulEndpoints[0].sampleEvents[0]).slice(0, 220)}`
+      const extractedCount =
+        (payload.extractedEventCount || 0) +
+        usefulEndpoints.reduce((total, endpoint) => total + (endpoint.extractedEventCount || 0), 0);
+      const extractedSamples = [
+        ...(payload.extractedEventsSample || []),
+        ...usefulEndpoints.flatMap((endpoint) => endpoint.extractedEventsSample || []),
+      ];
+      const searchHits = payload.searchHits || [];
+      const sampleText = extractedSamples.length
+        ? ` Sample: ${JSON.stringify(extractedSamples[0]).slice(0, 220)}`
+        : searchHits.length
+          ? ` Raw name hit: ${JSON.stringify(searchHits[0]).slice(0, 220)}`
         : "";
 
       setEventDiagnosticStatus({
-        type: usefulEndpoints.length ? "success" : "error",
-        message: usefulEndpoints.length
-          ? `Found ${usefulEndpoints.length} likely useful event endpoint(s) after checking ${checkedCount}.${sampleText}`
-          : `Checked ${checkedCount} FIFA endpoints but did not find clear player-level event data.`,
+        type: extractedCount || extractedSamples.length || searchHits.length ? "success" : "error",
+        message: extractedCount || extractedSamples.length
+          ? `Found ${extractedCount || extractedSamples.length} extractable match event(s) after checking ${checkedCount} FIFA endpoint(s).${sampleText}`
+          : searchHits.length
+            ? `Found the known scorer names in FIFA's raw data, but they are not extractable yet. ${sampleText}`
+          : `Checked ${checkedCount} FIFA endpoint(s), but did not find extractable player-level events. It may still only be exposing team totals.`,
         payload,
       });
     } catch (error) {

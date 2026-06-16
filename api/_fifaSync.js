@@ -86,11 +86,14 @@ export async function diagnoseFifaMatchCentre(matchCentreUrl, homeTeamName = "",
   };
 }
 
-export async function diagnoseFifaEventData(matchCentreUrl) {
+export async function diagnoseFifaEventData(matchCentreUrl, search = "") {
   const matchId = extractMatchIdFromMatchCentreUrl(matchCentreUrl);
   const liveMatch = await fetchFifaLiveMatch(matchId);
   const fdhMatchId = liveMatch?.Properties?.IdIFES;
   const extractedEvents = extractFifaMatchEvents(liveMatch);
+  const homeContext = getFifaTeamEventContext(liveMatch?.HomeTeam || liveMatch?.Home);
+  const awayContext = getFifaTeamEventContext(liveMatch?.AwayTeam || liveMatch?.Away);
+  const searchTerms = parseDiagnosticSearchTerms(search);
   const endpointReports = [];
 
   const liveSummary = summarisePotentialEventPayload(liveMatch);
@@ -100,6 +103,7 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
     source: "fifa-live-match",
     extractedEventCount: extractedEvents.length,
     extractedEventsSample: extractedEvents.slice(0, 8),
+    searchHits: findPayloadSearchHits(liveMatch, searchTerms),
     ...liveSummary,
   });
 
@@ -113,7 +117,7 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
     ];
 
     for (const url of candidateUrls) {
-      endpointReports.push(await diagnoseFifaJsonEndpoint(url));
+      endpointReports.push(await diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTerms));
     }
   }
 
@@ -123,6 +127,10 @@ export async function diagnoseFifaEventData(matchCentreUrl) {
     fdhMatchId: fdhMatchId || null,
     extractedEventCount: extractedEvents.length,
     extractedEventsSample: extractedEvents.slice(0, 8),
+    searchTerms,
+    searchHits: endpointReports.flatMap((report) =>
+      (report.searchHits || []).map((hit) => ({ ...hit, url: report.url }))
+    ),
     endpointsChecked: endpointReports.length,
     likelyUsefulEndpoints: endpointReports.filter((report) => report.ok && report.hasLikelyEventData),
     endpointReports,
@@ -367,7 +375,15 @@ async function fetchFifaTeamStats(fifaFixture) {
   const awayTeamId = liveMatch.AwayTeam?.IdTeam || fifaFixture.Away?.IdTeam;
   const homeStats = getFdhTeamStats(teamsPayload, homeTeamId);
   const awayStats = getFdhTeamStats(teamsPayload, awayTeamId);
-  const matchEvents = extractFifaMatchEvents(liveMatch);
+  const homeContext = getFifaTeamEventContext(liveMatch.HomeTeam || fifaFixture.Home);
+  const awayContext = getFifaTeamEventContext(liveMatch.AwayTeam || fifaFixture.Away);
+  const eventPayloads = await fetchFifaEventPayloads(fdhMatchId);
+  const matchEvents = sortMatchEvents(
+    dedupeMatchEvents([
+      ...extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext),
+      ...eventPayloads.flatMap((payload) => extractFifaMatchEventsFromPayload(payload, homeContext, awayContext)),
+    ])
+  );
 
   return {
     homeYellowCards: getFdhStat(homeStats, "YellowCards"),
@@ -385,6 +401,7 @@ async function fetchFifaTeamStats(fifaFixture) {
       hasHomeStats: homeStats.length > 0,
       hasAwayStats: awayStats.length > 0,
       matchEventCount: matchEvents.length,
+      eventPayloadCount: eventPayloads.length,
     },
   };
 }
@@ -408,12 +425,42 @@ async function fetchJson(url) {
   return response.json();
 }
 
-async function diagnoseFifaJsonEndpoint(url) {
+async function fetchOptionalJson(url) {
+  try {
+    return await fetchJson(url);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFifaEventPayloads(fdhMatchId) {
+  const candidateUrls = [
+    `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/events.json`,
+    `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/timeline.json`,
+    `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/play-by-play.json`,
+    `https://fdh-api.fifa.com/v1/stats/match/${fdhMatchId}/commentary.json`,
+  ];
+  const payloads = [];
+
+  for (const url of candidateUrls) {
+    const payload = await fetchOptionalJson(url);
+    if (payload) payloads.push(payload);
+  }
+
+  return payloads;
+}
+
+async function diagnoseFifaJsonEndpoint(url, homeContext, awayContext, searchTerms = []) {
   try {
     const payload = await fetchJson(url);
+    const extractedEvents = extractFifaMatchEventsFromPayload(payload, homeContext, awayContext);
+
     return {
       url,
       ok: true,
+      extractedEventCount: extractedEvents.length,
+      extractedEventsSample: extractedEvents.slice(0, 8),
+      searchHits: findPayloadSearchHits(payload, searchTerms),
       ...summarisePotentialEventPayload(payload),
     };
   } catch (error) {
@@ -423,6 +470,63 @@ async function diagnoseFifaJsonEndpoint(url) {
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function parseDiagnosticSearchTerms(search) {
+  return String(search || "")
+    .split(",")
+    .map((term) => term.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function findPayloadSearchHits(payload, searchTerms) {
+  if (!searchTerms.length) return [];
+
+  const hits = [];
+  const seen = new Set();
+
+  function visit(value, path = "$", depth = 0) {
+    if (hits.length >= 20 || depth > 8 || value === null || value === undefined) return;
+
+    if (typeof value === "string" || typeof value === "number") {
+      const text = String(value);
+      const matchedTerm = searchTerms.find((term) => text.toLowerCase().includes(term.toLowerCase()));
+      if (matchedTerm) {
+        hits.push({
+          term: matchedTerm,
+          path,
+          value: text.slice(0, 180),
+        });
+      }
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${path}[${index}]`, depth + 1));
+      return;
+    }
+
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+
+    const objectText = JSON.stringify(summariseEventLikeItem(value));
+    const matchedTerm = searchTerms.find((term) => objectText.toLowerCase().includes(term.toLowerCase()));
+    if (matchedTerm) {
+      hits.push({
+        term: matchedTerm,
+        path,
+        object: summariseEventLikeItem(value),
+      });
+    }
+
+    for (const [key, child] of Object.entries(value)) {
+      visit(child, `${path}.${key}`, depth + 1);
+    }
+  }
+
+  visit(payload);
+  return hits;
 }
 
 function summarisePotentialEventPayload(payload) {
@@ -509,6 +613,11 @@ function summariseEventLikeItem(item) {
 function extractFifaMatchEvents(liveMatch) {
   const homeContext = getFifaTeamEventContext(liveMatch?.HomeTeam || liveMatch?.Home);
   const awayContext = getFifaTeamEventContext(liveMatch?.AwayTeam || liveMatch?.Away);
+
+  return sortMatchEvents(dedupeMatchEvents(extractFifaMatchEventsFromPayload(liveMatch, homeContext, awayContext)));
+}
+
+function extractFifaMatchEventsFromPayload(payload, homeContext, awayContext) {
   const events = [];
   const seen = new Set();
 
@@ -529,13 +638,9 @@ function extractFifaMatchEvents(liveMatch) {
     for (const child of Object.values(value)) visit(child, depth + 1);
   }
 
-  visit(liveMatch);
+  visit(payload);
 
-  return dedupeMatchEvents(events).sort((a, b) => {
-    const aMinute = Number.parseInt(String(a.minute).replace(/\D/g, ""), 10);
-    const bMinute = Number.parseInt(String(b.minute).replace(/\D/g, ""), 10);
-    return (Number.isNaN(aMinute) ? 999 : aMinute) - (Number.isNaN(bMinute) ? 999 : bMinute);
-  });
+  return events;
 }
 
 function normaliseFifaEventObject(item, homeContext, awayContext) {
@@ -699,6 +804,14 @@ function dedupeMatchEvents(events) {
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
+  });
+}
+
+function sortMatchEvents(events) {
+  return [...events].sort((a, b) => {
+    const aMinute = Number.parseInt(String(a.minute).replace(/\D/g, ""), 10);
+    const bMinute = Number.parseInt(String(b.minute).replace(/\D/g, ""), 10);
+    return (Number.isNaN(aMinute) ? 999 : aMinute) - (Number.isNaN(bMinute) ? 999 : bMinute);
   });
 }
 

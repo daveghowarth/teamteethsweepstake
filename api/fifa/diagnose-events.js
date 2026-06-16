@@ -8,6 +8,7 @@ export default async function handler(request, response) {
 
   const params = new URL(request.url || "", "http://localhost").searchParams;
   const matchCentreUrl = request.query?.url || params.get("url");
+  const search = request.query?.search || params.get("search") || "";
 
   if (!matchCentreUrl || !String(matchCentreUrl).startsWith("https://www.fifa.com/")) {
     sendJson(response, 400, {
@@ -17,7 +18,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    sendJson(response, 200, await diagnoseFifaEventData(String(matchCentreUrl)));
+    sendJson(response, 200, await diagnoseFifaEventData(String(matchCentreUrl), String(search)));
   } catch (error) {
     sendJson(response, 500, {
       error: error instanceof Error ? error.message : "Could not diagnose FIFA event data.",
