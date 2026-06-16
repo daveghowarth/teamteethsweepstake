@@ -3342,6 +3342,14 @@ function getFixtureLabel(fixture) {
   return fixture.stage === "Group" ? `Group ${fixture.group}` : fixture.stage;
 }
 
+function getFixtureTeamPairKey(fixture) {
+  return getTeamPairKey(fixture.homeTeamName, fixture.awayTeamName);
+}
+
+function getTeamPairKey(homeTeamName, awayTeamName) {
+  return `${getCanonicalTeamName(homeTeamName)}::${getCanonicalTeamName(awayTeamName)}`;
+}
+
 function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
   const sortedFifaFixtures = [...fifaFixtures].sort((a, b) =>
     (a.MatchNumber || 999) - (b.MatchNumber || 999)
@@ -3353,8 +3361,8 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       .filter((fixture) => fixture.fifaMatchId)
       .map((fixture) => [fixture.fifaMatchId, fixture])
   );
-  const previousFixturesByMatchNumber = new Map(
-    repairedTournament.fixtures.map((fixture) => [fixture.matchNumber, fixture])
+  const previousFixturesByTeamPair = new Map(
+    repairedTournament.fixtures.map((fixture) => [getFixtureTeamPairKey(fixture), fixture])
   );
   const groupSlotUsage = {};
 
@@ -3368,18 +3376,13 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
     const homeTeam = mapFifaTeamToLocalTeam(fifaFixture.Home, group, nextTeams, groupSlotUsage);
     const awayTeam = mapFifaTeamToLocalTeam(fifaFixture.Away, group, nextTeams, groupSlotUsage);
     const matchNumber = fifaFixture.MatchNumber || index + 1;
+    const fixtureTeamPairKey = getTeamPairKey(homeTeam.name, awayTeam.name);
     const previousFixture =
-      previousFixturesByFifaId.get(fifaFixture.IdMatch) || previousFixturesByMatchNumber.get(matchNumber);
+      previousFixturesByFifaId.get(fifaFixture.IdMatch) ||
+      previousFixturesByTeamPair.get(fixtureTeamPairKey);
     const homeScore = normaliseApiScore(fifaFixture.Home?.Score);
     const awayScore = normaliseApiScore(fifaFixture.Away?.Score);
     const matchCentreStats = fifaFixture.matchCentreStats || null;
-    const officialFixture = previousFixturesByMatchNumber.get(matchNumber);
-    const fixtureHomeTeam = officialFixture?.homeTeamId
-      ? nextTeams.find((team) => team.id === officialFixture.homeTeamId) || homeTeam
-      : homeTeam;
-    const fixtureAwayTeam = officialFixture?.awayTeamId
-      ? nextTeams.find((team) => team.id === officialFixture.awayTeamId) || awayTeam
-      : awayTeam;
 
     return {
       id: `fifa-${fifaFixture.IdMatch || index + 1}`,
@@ -3392,10 +3395,10 @@ function mapFifaDataToTournament(currentTournament, fifaFixtures, syncPayload) {
       date: getFifaFixtureDate(fifaFixture),
       kickoffUk: getFifaKickoffUk(fifaFixture),
       venue: getFifaVenue(fifaFixture),
-      homeTeamId: fixtureHomeTeam.id,
-      awayTeamId: fixtureAwayTeam.id,
-      homeTeamName: fixtureHomeTeam.name,
-      awayTeamName: fixtureAwayTeam.name,
+      homeTeamId: homeTeam.id,
+      awayTeamId: awayTeam.id,
+      homeTeamName: homeTeam.name,
+      awayTeamName: awayTeam.name,
       homeScore: homeScore ?? previousFixture?.homeScore ?? null,
       awayScore: awayScore ?? previousFixture?.awayScore ?? null,
       homeYellowCards: mergePositiveMatchCentreStat(
@@ -3446,9 +3449,24 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
   const fifaTeamName = getCanonicalTeamName(
     getFifaText(fifaTeam?.TeamName) || fifaTeam?.ShortClubName || "Team TBC"
   );
-  const existingFifaTeam = teams.find((team) => team.fifaTeamId === fifaTeamId && fifaTeamId);
+  const existingByName = teams.find((team) => getCanonicalTeamName(team.name) === fifaTeamName);
+  const existingFifaTeam = teams.find(
+    (team) =>
+      team.fifaTeamId === fifaTeamId &&
+      fifaTeamId &&
+      (!existingByName || team.id === existingByName.id)
+  );
   const nextFlagEmoji = getFlagEmojiFromCountryCode(fifaTeam?.IdCountry);
   const nextFlagUrl = getTeamFlagUrl(fifaTeamName);
+
+  if (existingByName) {
+    existingByName.fifaTeamId = fifaTeamId || existingByName.fifaTeamId;
+    existingByName.name = fifaTeamName;
+    existingByName.flagEmoji = nextFlagEmoji || existingByName.flagEmoji;
+    existingByName.flagUrl = nextFlagUrl || existingByName.flagUrl;
+    if (group) groupSlotUsage[group]?.add(existingByName.id);
+    return existingByName;
+  }
 
   if (existingFifaTeam) {
     existingFifaTeam.name = fifaTeamName;
@@ -3459,19 +3477,6 @@ function mapFifaTeamToLocalTeam(fifaTeam, group, teams, groupSlotUsage) {
 
   if (group) {
     const groupTeams = teams.filter((team) => team.group === group).sort((a, b) => a.seed - b.seed);
-    const existingByName = groupTeams.find(
-      (team) => getCanonicalTeamName(team.name) === fifaTeamName
-    );
-
-    if (existingByName) {
-      existingByName.fifaTeamId = fifaTeamId;
-      existingByName.name = fifaTeamName;
-      existingByName.flagEmoji = nextFlagEmoji || existingByName.flagEmoji;
-      existingByName.flagUrl = nextFlagUrl || existingByName.flagUrl;
-      groupSlotUsage[group]?.add(existingByName.id);
-      return existingByName;
-    }
-
     const nextSlot = groupTeams.find((team) => !groupSlotUsage[group]?.has(team.id));
 
     if (nextSlot) {
