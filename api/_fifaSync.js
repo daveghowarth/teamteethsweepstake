@@ -607,6 +607,8 @@ function normaliseTeamName(name = "") {
     "cote divoire": "ivory coast",
     "czech republic": "czechia",
     "ivory coast": "ivory coast",
+    "ir iran": "iran",
+    "iran": "iran",
     "korea republic": "korea republic",
     "south korea": "korea republic",
     "turkey": "turkiye",

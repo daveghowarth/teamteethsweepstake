@@ -5,6 +5,7 @@ const teamNameAliases = {
   "South Korea": "Korea Republic",
   Curacao: "Curaçao",
   Turkiye: "Türkiye",
+  "IR Iran": "Iran",
 };
 
 const officialFixtureSlots = [

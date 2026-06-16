@@ -83,6 +83,8 @@ const teamNameAliases = {
   "türkiye": "Türkiye",
   "czech republic": "Czechia",
   "czechia": "Czechia",
+  "ir iran": "Iran",
+  "iran": "Iran",
 };
 
 const canonicalTeamNames = new Map(
