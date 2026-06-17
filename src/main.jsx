@@ -160,6 +160,41 @@ const tabs = [
   { id: "settings", label: "Settings / Data", icon: Database },
 ];
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app-shell flex min-h-screen items-center justify-center px-4 text-white">
+          <section className="glass-panel max-w-xl rounded-lg p-6 text-center shadow-soft">
+            <h1 className="text-2xl font-black">The app could not load</h1>
+            <p className="mt-3 text-sm leading-6 text-cyan-100/75">
+              A live data problem stopped this page from rendering. Try refreshing once; if it keeps happening,
+              the admin data needs a quick repair.
+            </p>
+            <button
+              className="mt-5 rounded-lg bg-cyan-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-white"
+              onClick={() => window.location.reload()}
+            >
+              Refresh
+            </button>
+          </section>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
   const [activeTab, setActiveTab] = React.useState("dashboard");
   const isLocalSite = isLocalEditableSite();
@@ -4368,6 +4403,8 @@ function slugify(text) {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </React.StrictMode>
 );

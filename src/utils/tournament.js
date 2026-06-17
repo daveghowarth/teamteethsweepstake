@@ -1,8 +1,11 @@
 export function calculateGroupTables(tournament) {
   const tables = {};
+  const groups = Array.isArray(tournament.groups) ? tournament.groups : [];
+  const teams = Array.isArray(tournament.teams) ? tournament.teams : [];
+  const fixtures = Array.isArray(tournament.fixtures) ? tournament.fixtures : [];
 
-  for (const group of tournament.groups) {
-    tables[group] = tournament.teams
+  for (const group of groups) {
+    tables[group] = teams
       .filter((team) => team.group === group)
       .map((team) => ({
         ...team,
@@ -17,7 +20,7 @@ export function calculateGroupTables(tournament) {
       }));
   }
 
-  const completedGroupFixtures = tournament.fixtures.filter(
+  const completedGroupFixtures = fixtures.filter(
     (fixture) =>
       fixture.stage === "Group" && fixture.homeScore !== null && fixture.awayScore !== null
   );
@@ -25,14 +28,17 @@ export function calculateGroupTables(tournament) {
   // Every completed fixture updates both teams in the relevant group table.
   for (const fixture of completedGroupFixtures) {
     const table = tables[fixture.group];
+    if (!table) continue;
+
     const homeTeam = table.find((team) => team.id === fixture.homeTeamId);
     const awayTeam = table.find((team) => team.id === fixture.awayTeamId);
+    if (!homeTeam || !awayTeam) continue;
 
     applyMatchResult(homeTeam, fixture.homeScore, fixture.awayScore);
     applyMatchResult(awayTeam, fixture.awayScore, fixture.homeScore);
   }
 
-  for (const group of tournament.groups) {
+  for (const group of groups) {
     tables[group] = tables[group].sort(sortTableTeams);
   }
 
@@ -40,6 +46,8 @@ export function calculateGroupTables(tournament) {
 }
 
 function applyMatchResult(team, goalsFor, goalsAgainst) {
+  if (!team) return;
+
   team.played += 1;
   team.goalsFor += goalsFor;
   team.goalsAgainst += goalsAgainst;
@@ -69,36 +77,40 @@ export function getQualifiedTeams(groupTables) {
   const automaticQualifiers = Object.values(groupTables).flatMap((table) => table.slice(0, 2));
   const thirdPlacedTeams = Object.values(groupTables)
     .map((table) => table[2])
+    .filter(Boolean)
     .sort(sortTableTeams)
     .slice(0, 8);
 
   // Qualification is only meaningful after teams have actually played.
-  return [...automaticQualifiers, ...thirdPlacedTeams].filter((team) => team.played > 0);
+  return [...automaticQualifiers, ...thirdPlacedTeams].filter((team) => team && team.played > 0);
 }
 
 export function calculateDashboardStats(tournament, groupTables, qualifiedTeams) {
-  const completed = tournament.fixtures.filter(
+  const fixtures = Array.isArray(tournament.fixtures) ? tournament.fixtures : [];
+  const completed = fixtures.filter(
     (fixture) => fixture.homeScore !== null && fixture.awayScore !== null
   ).length;
 
-  const leaders = Object.values(groupTables).map((table) => table[0]);
+  const leaders = Object.values(groupTables).map((table) => table[0]).filter(Boolean);
 
   return {
     completed,
-    remaining: tournament.fixtures.length - completed,
+    remaining: fixtures.length - completed,
     leaders,
     qualifiedTeams,
-    nextFixtures: tournament.fixtures
+    nextFixtures: fixtures
       .filter((fixture) => fixture.homeScore === null || fixture.awayScore === null)
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
       .slice(0, 6),
   };
 }
 
 export function getFixturesByStage(fixtures, stageKind) {
+  const fixtureList = Array.isArray(fixtures) ? fixtures : [];
+
   if (stageKind === "group") {
-    return fixtures.filter((fixture) => fixture.stage === "Group");
+    return fixtureList.filter((fixture) => fixture.stage === "Group");
   }
 
-  return fixtures.filter((fixture) => fixture.stage !== "Group");
+  return fixtureList.filter((fixture) => fixture.stage !== "Group");
 }
