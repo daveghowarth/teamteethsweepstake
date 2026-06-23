@@ -22,7 +22,7 @@ import {
   getFixturesByStage,
   getQualifiedTeams,
 } from "./utils/tournament";
-import { generateEmailJpegReport, generatePdfReport } from "./utils/pdfReports.js";
+import { generateEmailJpegReport, generatePdfReport, generatePrizeTopFiveJpegReport } from "./utils/pdfReports.js";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const STORAGE_KEY = "world-cup-2026-tournament-data";
@@ -3039,6 +3039,12 @@ function PdfReportsPanel({ tournament }) {
     ["tables", "Group tables", "A3 landscape snapshot of all current group tables."],
     ["bracket", "Knockout bracket", "A3 landscape knockout bracket view."],
   ];
+  const prizeImageOptions = [
+    ["best-pot-b", "Prize 3 top 5", "Best Pot B team leaderboard image."],
+    ["biggest-loser", "Prize 4 top 5", "Biggest loser leaderboard image."],
+    ["master-of-chaos", "Prize 5 top 5", "Master of Chaos leaderboard image."],
+    ["dirtiest-player", "Prize 6 top 5", "Dirtiest Player leaderboard image."],
+  ];
 
   async function downloadReport(reportType, format) {
     setActiveReport(`${reportType}-${format}`);
@@ -3054,6 +3060,22 @@ function PdfReportsPanel({ tournament }) {
         error instanceof Error
           ? error.message
           : "That report could not be created. Please try again."
+      );
+    } finally {
+      setActiveReport(null);
+    }
+  }
+
+  async function downloadPrizeImage(prizeId) {
+    setActiveReport(`${prizeId}-top-5`);
+
+    try {
+      await generatePrizeTopFiveJpegReport(tournament, prizeId);
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "That prize image could not be created. Please try again."
       );
     } finally {
       setActiveReport(null);
@@ -3093,6 +3115,30 @@ function PdfReportsPanel({ tournament }) {
       <p className="mt-3 text-sm leading-6 text-white/55">
         PDFs are A3 landscape. Email JPEGs are lower-resolution landscape images, sized to sit neatly inside an email body.
       </p>
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <h3 className="font-black text-white">Prize top 5 images</h3>
+        <p className="mt-1 text-sm leading-6 text-white/55">
+          Download polished JPEG leaderboards for prizes 3 to 6.
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {prizeImageOptions.map(([prizeId, title, description]) => (
+            <div key={prizeId} className="glass-card rounded-lg p-4">
+              <span className="block text-sm font-black text-cyan-200">
+                {activeReport === `${prizeId}-top-5` ? "Preparing image..." : title}
+              </span>
+              <span className="mt-2 block text-sm leading-5 text-white/62">{description}</span>
+              <button
+                type="button"
+                onClick={() => downloadPrizeImage(prizeId)}
+                disabled={activeReport !== null}
+                className="mt-4 rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+              >
+                Download JPEG
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </Panel>
   );
 }
