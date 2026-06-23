@@ -141,7 +141,14 @@ async function drawPrizeReportBase(context, imageCache, meta) {
   context.fillRect(0, 138, EMAIL_WIDTH, EMAIL_HEIGHT - 138);
 
   const icon = await loadImage(meta.icon, imageCache).catch(() => null);
-  if (icon) drawContainImage(context, icon, 56, 38, 82, 82);
+  context.fillStyle = "#ffffff";
+  context.shadowColor = "rgba(0,0,0,0.28)";
+  context.shadowBlur = 18;
+  context.beginPath();
+  context.arc(98, 78, 52, 0, Math.PI * 2);
+  context.fill();
+  context.shadowBlur = 0;
+  if (icon) drawContainImage(context, icon, 60, 40, 76, 76);
 
   context.fillStyle = "#67e8f9";
   context.font = "900 42px Inter, Arial, sans-serif";
@@ -167,12 +174,12 @@ async function drawBestPotBPrizeReport(context, tournament, helpers) {
     rows,
     columns: [
       { title: "#", x: 42, width: 34, align: "center", value: (_row, index) => String(index + 1) },
-      { title: "Player", x: 88, width: 210, value: (row) => row.player },
-      { title: "Team", x: 322, width: 170, value: (row) => row.teamName, flag: true },
-      { title: "Furthest round", x: 520, width: 160, value: (row) => row.roundReached },
-      { title: "Played", x: 708, width: 86, align: "center", value: (row) => row.played },
-      { title: "GD", x: 818, width: 70, align: "center", value: (row) => formatSignedNumber(row.goalDifference) },
-      { title: "Goals", x: 910, width: 76, align: "center", value: (row) => row.goalsFor },
+      { title: "Player", x: 88, width: 250, value: (row) => row.player },
+      { title: "Team", x: 360, width: 160, value: (row) => row.teamName, flag: true },
+      { title: "Furthest round", x: 548, width: 150, value: (row) => row.roundReached },
+      { title: "Played", x: 724, width: 86, align: "center", value: (row) => row.played },
+      { title: "GD", x: 826, width: 70, align: "center", value: (row) => formatSignedNumber(row.goalDifference) },
+      { title: "Goals", x: 918, width: 76, align: "center", value: (row) => row.goalsFor },
     ],
   });
 }
@@ -183,12 +190,12 @@ async function drawBiggestLoserPrizeReport(context, tournament, helpers) {
     rows,
     columns: [
       { title: "#", x: 42, width: 34, align: "center", value: (_row, index) => String(index + 1) },
-      { title: "Player", x: 88, width: 210, value: (row) => row.player },
-      { title: "Team", x: 322, width: 170, value: (row) => row.teamName, flag: true },
-      { title: "Played", x: 520, width: 86, align: "center", value: (row) => row.played },
-      { title: "Points", x: 628, width: 86, align: "center", value: (row) => row.points },
-      { title: "GD", x: 736, width: 70, align: "center", value: (row) => formatSignedNumber(row.goalDifference) },
-      { title: "Goals", x: 828, width: 76, align: "center", value: (row) => row.goalsFor },
+      { title: "Player", x: 88, width: 250, value: (row) => row.player },
+      { title: "Team", x: 360, width: 160, value: (row) => row.teamName, flag: true },
+      { title: "Played", x: 548, width: 86, align: "center", value: (row) => row.played },
+      { title: "Points", x: 648, width: 86, align: "center", value: (row) => row.points },
+      { title: "GD", x: 748, width: 70, align: "center", value: (row) => formatSignedNumber(row.goalDifference) },
+      { title: "Goals", x: 834, width: 76, align: "center", value: (row) => row.goalsFor },
       { title: "Cards", x: 926, width: 82, align: "center", value: (row) => row.cards },
     ],
   });
@@ -200,8 +207,8 @@ async function drawMasterOfChaosPrizeReport(context, tournament, helpers) {
     rows,
     columns: [
       { title: "#", x: 42, width: 34, align: "center", value: (_row, index) => String(index + 1) },
-      { title: "Player", x: 88, width: 210, value: (row) => row.player },
-      { title: "Teams", x: 324, width: 132, flags: true },
+      { title: "Player", x: 88, width: 250, value: (row) => row.player },
+      { title: "Teams", x: 356, width: 110, flags: true },
       { title: "Pot A goals", x: 488, width: 102, align: "center", value: (row) => row.potAGoals },
       { title: "Pot B goals", x: 612, width: 102, align: "center", value: (row) => row.potBGoals },
       { title: "Pot A pens", x: 736, width: 96, align: "center", value: (row) => row.potAPenalties },
@@ -218,8 +225,8 @@ async function drawDirtiestPlayerPrizeReport(context, tournament, helpers) {
     cardHeadings: true,
     columns: [
       { title: "#", x: 42, width: 34, align: "center", value: (_row, index) => String(index + 1) },
-      { title: "Player", x: 88, width: 202, value: (row) => row.player },
-      { title: "Teams", x: 310, width: 116, flags: true },
+      { title: "Player", x: 88, width: 238, value: (row) => row.player },
+      { title: "Teams", x: 342, width: 100, flags: true },
       { title: "Pot A yellows", x: 456, width: 110, align: "center", value: (row) => row.potAYellows, yellowCard: true },
       { title: "Pot B yellows", x: 588, width: 110, align: "center", value: (row) => row.potBYellows, yellowCard: true },
       { title: "Pot A reds", x: 720, width: 96, align: "center", value: (row) => row.potAReds, redCard: true },
@@ -230,19 +237,24 @@ async function drawDirtiestPlayerPrizeReport(context, tournament, helpers) {
 }
 
 async function drawPrizeTable(context, helpers, { rows, columns }) {
-  drawPanel(context, 48, 158, 1104, 638, 22);
+  const panelY = 188;
+  const headerY = 224;
+  const firstRowY = 332;
+  const rowGap = 92;
+
+  drawPanel(context, 48, panelY, 1104, 608, 22);
 
   context.fillStyle = "rgba(103,232,249,0.16)";
-  roundRect(context, 74, 190, 1052, 54, 14, true);
+  roundRect(context, 74, headerY, 1052, 54, 14, true);
 
   for (const column of columns) {
-    if (column.yellowCard) drawCardIcon(context, column.x + 10, 205, "#facc15");
-    if (column.redCard) drawCardIcon(context, column.x + 10, 205, "#ef4444");
+    if (column.yellowCard) drawCardIcon(context, column.x + 10, headerY + 15, "#facc15");
+    if (column.redCard) drawCardIcon(context, column.x + 10, headerY + 15, "#ef4444");
     drawText(
       context,
       column.title,
       column.x + (column.yellowCard || column.redCard ? 34 : 0),
-      224,
+      headerY + 34,
       column.width - (column.yellowCard || column.redCard ? 34 : 0),
       "900 15px Inter, Arial, sans-serif",
       "#cffafe"
@@ -251,7 +263,7 @@ async function drawPrizeTable(context, helpers, { rows, columns }) {
 
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
-    const y = 272 + index * 96;
+    const y = firstRowY + index * rowGap;
 
     context.fillStyle = index === 0 ? "rgba(250,204,21,0.18)" : index % 2 === 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.045)";
     roundRect(context, 74, y - 54, 1052, 78, 16, true);
@@ -265,8 +277,7 @@ async function drawPrizeTable(context, helpers, { rows, columns }) {
       }
 
       if (column.title === "Player") {
-        drawText(context, row.player || "Player TBC", column.x, y - 14, column.width, "900 22px Inter, Arial, sans-serif", "#ffffff");
-        drawText(context, "Top 5 contender", column.x, y + 10, column.width, "700 13px Inter, Arial, sans-serif", "rgba(207,250,254,0.58)");
+        drawText(context, row.player || "Player TBC", column.x + 76, y - 4, column.width - 76, "900 22px Inter, Arial, sans-serif", "#ffffff");
         continue;
       }
 
