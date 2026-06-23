@@ -3,6 +3,9 @@ const easternTimeZoneOffset = "-04:00";
 const teamNameAliases = {
   "Bosnia & Herzegovina": "Bosnia and Herzegovina",
   "South Korea": "Korea Republic",
+  "Cabo Verde": "Cape Verde",
+  "Congo DR": "DR Congo",
+  "Democratic Republic of Congo": "DR Congo",
   Curacao: "Curaçao",
   Turkiye: "Türkiye",
   "IR Iran": "Iran",
