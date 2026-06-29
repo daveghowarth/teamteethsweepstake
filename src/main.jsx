@@ -2376,12 +2376,22 @@ function buildKnockoutBracketLayout(fixtures) {
   const positioned = new Map();
 
   const columns = stageDefinitions.map(([stage, label], columnIndex) => {
-    const stageFixtures = fixtures
-      .filter((fixture) => fixture.stage === stage)
-      .sort((a, b) => getKnockoutSortIndex(a, stage) - getKnockoutSortIndex(b, stage));
+    const sourceAssignments = assignKnockoutSourceNumbers(
+      fixtures.filter((fixture) => fixture.stage === stage),
+      positioned
+    );
+    const stageFixtures = [...sourceAssignments.keys()].sort((a, b) => {
+      const sourcePositionA = getAverageSourcePosition(sourceAssignments.get(a), positioned);
+      const sourcePositionB = getAverageSourcePosition(sourceAssignments.get(b), positioned);
+
+      if (sourcePositionA !== null && sourcePositionB !== null) return sourcePositionA - sourcePositionB;
+      if (sourcePositionA !== null) return -1;
+      if (sourcePositionB !== null) return 1;
+      return getKnockoutSortIndex(a, stage) - getKnockoutSortIndex(b, stage);
+    });
     const x = columnIndex * (cardWidth + columnGap);
     const items = stageFixtures.map((fixture, index) => {
-      const sourceNumbers = getKnockoutSourceMatchNumbers(fixture);
+      const sourceNumbers = sourceAssignments.get(fixture) || [];
       const sourcePositions = sourceNumbers
         .map((number) => positioned.get(number))
         .filter(Boolean);
@@ -2395,6 +2405,7 @@ function buildKnockoutBracketLayout(fixtures) {
         y,
         centerY: y + cardHeight / 2,
         fixture,
+        sourceNumbers,
       });
 
       return { fixture, y };
@@ -2416,12 +2427,13 @@ function buildKnockoutBracketLayout(fixtures) {
       y,
       centerY: y + cardHeight / 2,
       fixture: thirdPlaceFixture,
+      sourceNumbers: getKnockoutSourceMatchNumbers(thirdPlaceFixture),
     });
   }
 
   const connectors = [];
   for (const [matchNumber, position] of positioned.entries()) {
-    const sources = getKnockoutSourceMatchNumbers(position.fixture)
+    const sources = (position.sourceNumbers || [])
       .map((number) => positioned.get(number))
       .filter(Boolean);
 
@@ -2477,6 +2489,122 @@ function getKnockoutSourceMatchNumbers(fixture) {
   };
 
   return sourceMap[Number(fixture.matchNumber)] || [];
+}
+
+function assignKnockoutSourceNumbers(stageFixtures, positioned) {
+  const assignments = new Map();
+  const fallbackPairs = stageFixtures
+    .map((fixture) => ({
+      fixture,
+      sources: getKnockoutSourceMatchNumbers(fixture),
+    }))
+    .filter((entry) => entry.sources.length >= 2);
+  const usedFallbackKeys = new Set();
+
+  for (const fixture of stageFixtures) {
+    const actualSources = getActualKnockoutSourceMatchNumbers(fixture, positioned);
+    if (!actualSources.length) continue;
+
+    const matchingFallback = fallbackPairs.find(
+      (entry) =>
+        !usedFallbackKeys.has(getSourcePairKey(entry.sources)) &&
+        actualSources.every((sourceNumber) => entry.sources.includes(sourceNumber))
+    );
+    const sources = matchingFallback?.sources || actualSources;
+
+    assignments.set(fixture, sources);
+    if (matchingFallback) usedFallbackKeys.add(getSourcePairKey(matchingFallback.sources));
+  }
+
+  for (const fixture of stageFixtures) {
+    if (assignments.has(fixture)) continue;
+
+    const fallbackSources = getKnockoutSourceMatchNumbers(fixture);
+    const fallbackKey = getSourcePairKey(fallbackSources);
+
+    if (fallbackSources.length >= 2 && !usedFallbackKeys.has(fallbackKey)) {
+      assignments.set(fixture, fallbackSources);
+      usedFallbackKeys.add(fallbackKey);
+      continue;
+    }
+
+    const nextUnusedFallback = fallbackPairs.find(
+      (entry) => !usedFallbackKeys.has(getSourcePairKey(entry.sources))
+    );
+
+    if (nextUnusedFallback) {
+      assignments.set(fixture, nextUnusedFallback.sources);
+      usedFallbackKeys.add(getSourcePairKey(nextUnusedFallback.sources));
+    } else {
+      assignments.set(fixture, fallbackSources);
+    }
+  }
+
+  return assignments;
+}
+
+function getActualKnockoutSourceMatchNumbers(fixture, positioned) {
+  const targetKeys = getFixtureTeamIdentityKeys(fixture);
+  const sources = [];
+
+  for (const targetKey of targetKeys) {
+    const source = [...positioned.values()].find((position) =>
+      getKnockoutWinnerIdentityKeys(position.fixture).includes(targetKey)
+    );
+
+    if (source) sources.push(Number(source.fixture.matchNumber));
+  }
+
+  return [...new Set(sources)];
+}
+
+function getFixtureTeamIdentityKeys(fixture) {
+  return [
+    ...getTeamIdentityKeys(fixture.homeTeam, fixture.homeTeamId, fixture.homeTeamName),
+    ...getTeamIdentityKeys(fixture.awayTeam, fixture.awayTeamId, fixture.awayTeamName),
+  ];
+}
+
+function getKnockoutWinnerIdentityKeys(fixture) {
+  const homeScore = Number(fixture.homeScore);
+  const awayScore = Number(fixture.awayScore);
+
+  if (Number.isNaN(homeScore) || Number.isNaN(awayScore) || homeScore === awayScore) return [];
+  if (homeScore > awayScore) {
+    return getTeamIdentityKeys(fixture.homeTeam, fixture.homeTeamId, fixture.homeTeamName);
+  }
+
+  return getTeamIdentityKeys(fixture.awayTeam, fixture.awayTeamId, fixture.awayTeamName);
+}
+
+function getTeamIdentityKeys(team, teamId, teamName) {
+  const keys = [];
+  const id = team?.id || teamId;
+  if (id) keys.push(`id:${id}`);
+
+  const name = team?.name || teamName;
+  if (!name || isKnockoutPlaceholderTeamName(name)) return keys;
+
+  keys.push(`name:${getCanonicalTeamName(name).toLowerCase()}`);
+  return keys;
+}
+
+function isKnockoutPlaceholderTeamName(name) {
+  const text = String(name || "").trim();
+  return !text || text === "Team TBC" || /^[WL]?\d+$/.test(text) || /^[123][A-L]/.test(text);
+}
+
+function getAverageSourcePosition(sourceNumbers, positioned) {
+  const sourcePositions = (sourceNumbers || [])
+    .map((number) => positioned.get(number)?.centerY)
+    .filter((value) => value !== undefined);
+
+  if (sourcePositions.length < 2) return null;
+  return average(sourcePositions);
+}
+
+function getSourcePairKey(sources) {
+  return [...(sources || [])].sort((a, b) => a - b).join("-");
 }
 
 function getKnockoutSortIndex(fixture, stage) {
