@@ -3941,8 +3941,22 @@ function getPrizeEligibility(participant, tournament, groupTables) {
       };
     }
 
-    const teamsToCheck = rule.id === "best-pot-b" ? [picks.potB].filter(Boolean) : pickedTeams;
-    const activeTeams = teamsToCheck.filter((team) =>
+    if (rule.id === "best-pot-b") {
+      const potBTeam = picks.potB;
+      const isStillAlive = isTeamStillAliveInTournament(potBTeam, tournament, groupTables);
+
+      return {
+        id: rule.id,
+        name: rule.name,
+        status: isStillAlive
+          ? `Still eligible via ${potBTeam.name}`
+          : potBTeam
+            ? `${potBTeam.name} has been eliminated`
+            : "Not currently eligible",
+      };
+    }
+
+    const activeTeams = pickedTeams.filter((team) =>
       isTeamStillRelevantForPrize(team, rule.id, groupTables, allGroupMatchesCompleted)
     );
 
@@ -3976,6 +3990,53 @@ function isTeamStillRelevantForPrize(team, prizeId, groupTables, allGroupMatches
   }
 
   return groupPosition <= 3;
+}
+
+function isTeamStillAliveInTournament(team, tournament, groupTables) {
+  if (!team?.id) return false;
+
+  const fixtures = Array.isArray(tournament.fixtures) ? tournament.fixtures : [];
+  const teamFixtures = fixtures.filter(
+    (fixture) => fixture.homeTeamId === team.id || fixture.awayTeamId === team.id
+  );
+
+  if (teamFixtures.some((fixture) => !isFixtureComplete(fixture))) return true;
+
+  const completedKnockoutFixtures = teamFixtures
+    .filter((fixture) => fixture.stage !== "Group" && isFixtureComplete(fixture))
+    .sort((a, b) => Number(a.matchNumber || 0) - Number(b.matchNumber || 0));
+
+  if (completedKnockoutFixtures.length > 0) {
+    const latestKnockoutFixture = completedKnockoutFixtures[completedKnockoutFixtures.length - 1];
+    return getFixtureWinnerTeamId(latestKnockoutFixture) === team.id;
+  }
+
+  const allGroupMatchesCompleted = fixtures
+    .filter((fixture) => fixture.stage === "Group")
+    .every(isFixtureComplete);
+
+  if (!allGroupMatchesCompleted) return true;
+
+  return getQualifiedTeams(groupTables).some((qualifiedTeam) => qualifiedTeam.id === team.id);
+}
+
+function isFixtureComplete(fixture) {
+  return (
+    fixture.homeScore !== null &&
+    fixture.homeScore !== undefined &&
+    fixture.awayScore !== null &&
+    fixture.awayScore !== undefined
+  );
+}
+
+function getFixtureWinnerTeamId(fixture) {
+  if (!isFixtureComplete(fixture)) return null;
+
+  const homeScore = Number(fixture.homeScore);
+  const awayScore = Number(fixture.awayScore);
+
+  if (Number.isNaN(homeScore) || Number.isNaN(awayScore) || homeScore === awayScore) return null;
+  return homeScore > awayScore ? fixture.homeTeamId : fixture.awayTeamId;
 }
 
 function getMasterOfChaosRows(tournament) {
