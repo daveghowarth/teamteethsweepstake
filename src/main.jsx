@@ -2363,6 +2363,7 @@ function KnockoutTeamLine({ team, name, score }) {
 function buildKnockoutBracketLayout(fixtures) {
   const cardWidth = 270;
   const cardHeight = 130;
+  const headerOffset = 54;
   const columnGap = 58;
   const firstRoundGap = 28;
   const stageDefinitions = [
@@ -2377,7 +2378,7 @@ function buildKnockoutBracketLayout(fixtures) {
   const columns = stageDefinitions.map(([stage, label], columnIndex) => {
     const stageFixtures = fixtures
       .filter((fixture) => fixture.stage === stage)
-      .sort((a, b) => Number(a.matchNumber) - Number(b.matchNumber));
+      .sort((a, b) => getKnockoutSortIndex(a, stage) - getKnockoutSortIndex(b, stage));
     const x = columnIndex * (cardWidth + columnGap);
     const items = stageFixtures.map((fixture, index) => {
       const sourceNumbers = getKnockoutSourceMatchNumbers(fixture);
@@ -2387,7 +2388,7 @@ function buildKnockoutBracketLayout(fixtures) {
       const y =
         sourcePositions.length >= 2
           ? average(sourcePositions.map((position) => position.centerY)) - cardHeight / 2
-          : index * (cardHeight + firstRoundGap);
+          : headerOffset + index * (cardHeight + firstRoundGap);
 
       positioned.set(Number(fixture.matchNumber), {
         x,
@@ -2457,7 +2458,7 @@ function getKnockoutSourceMatchNumbers(fixture) {
   if (placeholderSources.length) return placeholderSources;
 
   const sourceMap = {
-    89: [74, 77],
+    89: [73, 76],
     90: [74, 78],
     91: [75, 77],
     92: [79, 81],
@@ -2476,6 +2477,36 @@ function getKnockoutSourceMatchNumbers(fixture) {
   };
 
   return sourceMap[Number(fixture.matchNumber)] || [];
+}
+
+function getKnockoutSortIndex(fixture, stage) {
+  const matchNumber = Number(fixture.matchNumber);
+
+  if (stage === "Round of 32") {
+    const roundOf32Order = [73, 76, 74, 78, 75, 77, 79, 81, 80, 82, 83, 84, 85, 88, 86, 87];
+    const index = roundOf32Order.indexOf(matchNumber);
+    return index === -1 ? 999 + matchNumber : index;
+  }
+
+  if (stage === "Round of 16") {
+    const roundOf16Order = [89, 90, 91, 92, 93, 94, 95, 96];
+    const index = roundOf16Order.indexOf(matchNumber);
+    return index === -1 ? 999 + matchNumber : index;
+  }
+
+  if (stage === "Quarter-final") {
+    const quarterFinalOrder = [97, 98, 99, 100];
+    const index = quarterFinalOrder.indexOf(matchNumber);
+    return index === -1 ? 999 + matchNumber : index;
+  }
+
+  if (stage === "Semi-final") {
+    const semiFinalOrder = [101, 102];
+    const index = semiFinalOrder.indexOf(matchNumber);
+    return index === -1 ? 999 + matchNumber : index;
+  }
+
+  return matchNumber;
 }
 
 function average(values) {
