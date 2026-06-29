@@ -650,7 +650,12 @@ function RulesPage({ tournament }) {
       />
       <div className="grid gap-4 lg:grid-cols-2">
         {prizeRules.map((rule) => (
-          <PrizeRuleCard key={rule.id} rule={rule} onOpenTable={setSelectedPrizeTable} />
+          <PrizeRuleCard
+            key={rule.id}
+            rule={rule}
+            tournament={tournament}
+            onOpenTable={setSelectedPrizeTable}
+          />
         ))}
       </div>
 
@@ -665,7 +670,7 @@ function RulesPage({ tournament }) {
   );
 }
 
-function PrizeRuleCard({ rule, onOpenTable }) {
+function PrizeRuleCard({ rule, tournament, onOpenTable }) {
   const hasPopoutTable =
     rule.complexity === "table" ||
     rule.id === "master-of-chaos" ||
@@ -674,6 +679,10 @@ function PrizeRuleCard({ rule, onOpenTable }) {
     rule.id === "master-of-chaos" || rule.id === "dirtiest-player"
       ? "View league table"
       : "View criteria";
+  const groupTables = React.useMemo(() => calculateGroupTables(tournament), [tournament]);
+  const award = rule.id === "biggest-loser"
+    ? getBiggestLoserAward(tournament, groupTables)
+    : null;
 
   return (
     <article className="glass-card rounded-lg p-5 shadow-sm transition hover:-translate-y-1 hover:bg-white/12">
@@ -688,6 +697,8 @@ function PrizeRuleCard({ rule, onOpenTable }) {
         <span className="rounded bg-cyan-300 px-3 py-1 text-xs font-black text-slate-950">{rule.prize}</span>
       </div>
 
+      {award && <PrizeAwardPanel award={award} />}
+
       {hasPopoutTable && (
         <button
           onClick={() => onOpenTable(rule.id)}
@@ -700,7 +711,25 @@ function PrizeRuleCard({ rule, onOpenTable }) {
   );
 }
 
-function PrizeIcon({ prizeId, label, size = "large", active = true }) {
+function PrizeAwardPanel({ award }) {
+  return (
+    <div className="mt-4 rounded-lg border border-amber-300/45 bg-amber-300/12 p-3 shadow-[0_0_28px_rgba(251,191,36,0.16)]">
+      <p className="text-xs font-black uppercase tracking-wide text-amber-200">Awarded to -</p>
+      <div className="mt-2 flex items-center gap-3">
+        <PlayerAvatar participant={award.participant} />
+        <div className="min-w-0">
+          <p className="font-black text-white">{getParticipantDisplayName(award.participant)}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-bold text-white/70">
+            <TeamBadge team={award.team} fallbackFlag={award.team?.flagEmoji || getPlaceholderFlag(award.team?.id)} />
+            <span>{award.team?.name || "Team TBC"}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PrizeIcon({ prizeId, label, size = "large", active = true, awarded = false }) {
   const imagePath = prizeIconPaths[prizeId]?.[size] || prizeIconPaths.winner[size];
   const sizeClass = size === "small" ? "prize-icon-small" : "prize-icon-large";
 
@@ -708,7 +737,9 @@ function PrizeIcon({ prizeId, label, size = "large", active = true }) {
     <img
       src={imagePath}
       alt={label}
-      className={`prize-icon ${sizeClass} ${active ? "" : "prize-icon-inactive"}`}
+      className={`prize-icon ${sizeClass} ${active ? "" : "prize-icon-inactive"} ${
+        awarded ? "prize-icon-awarded" : ""
+      }`}
       loading="lazy"
     />
   );
@@ -946,7 +977,7 @@ function ParticipantButton({ participant, tournament, groupTables, onClick }) {
         {prizeEligibility.map((prize) => (
           <span
             key={prize.id}
-            className="prize-icon-chip"
+            className={`prize-icon-chip ${isPrizeAwarded(prize) ? "prize-icon-chip-awarded" : ""}`}
             title={`${prize.name}: ${prize.status}`}
             aria-label={`${prize.name}: ${prize.status}`}
           >
@@ -955,6 +986,7 @@ function ParticipantButton({ participant, tournament, groupTables, onClick }) {
               label={prize.name}
               size="small"
               active={isPrizeStillEligible(prize)}
+              awarded={isPrizeAwarded(prize)}
             />
           </span>
         ))}
@@ -1057,7 +1089,9 @@ function ParticipantDetail({ participant, tournament, groupTables }) {
             <div
               key={prize.id}
               className={`rounded-lg border p-3 ${
-                isPrizeStillEligible(prize)
+                isPrizeAwarded(prize)
+                  ? "border-amber-300/55 bg-amber-300/12 shadow-[0_0_30px_rgba(251,191,36,0.16)]"
+                  : isPrizeStillEligible(prize)
                   ? "border-cyan-300/25 bg-cyan-300/10"
                   : "border-white/12 bg-white/8"
               }`}
@@ -1068,6 +1102,7 @@ function ParticipantDetail({ participant, tournament, groupTables }) {
                   label={prize.name}
                   size="small"
                   active={isPrizeStillEligible(prize)}
+                  awarded={isPrizeAwarded(prize)}
                 />
                 <div>
                   <p className="font-bold">{prize.name}</p>
@@ -3919,7 +3954,11 @@ function addSweepstakeOwnersToTeams(tournament) {
 }
 
 function isPrizeStillEligible(prize) {
-  return prize.status?.startsWith("Still eligible");
+  return prize.awarded || prize.status?.startsWith("Still eligible");
+}
+
+function isPrizeAwarded(prize) {
+  return Boolean(prize.awarded);
 }
 
 function getPrizeEligibility(participant, tournament, groupTables) {
@@ -3937,6 +3976,22 @@ function getPrizeEligibility(participant, tournament, groupTables) {
         name: rule.name,
         status: pickedTeams.length
           ? "Still eligible via combined Pot A and Pot B totals"
+          : "Not currently eligible",
+      };
+    }
+
+    if (rule.id === "biggest-loser") {
+      const award = getBiggestLoserAward(tournament, groupTables);
+      const isWinner = award?.participant.id === participant.id;
+
+      return {
+        id: rule.id,
+        name: rule.name,
+        awarded: isWinner,
+        status: award
+          ? isWinner
+            ? `Awarded to ${getParticipantDisplayName(participant)} via ${award.team.name}`
+            : `Awarded to ${getParticipantDisplayName(award.participant)} via ${award.team.name}`
           : "Not currently eligible",
       };
     }
@@ -3969,6 +4024,51 @@ function getPrizeEligibility(participant, tournament, groupTables) {
           : "Not currently eligible",
     };
   });
+}
+
+function getBiggestLoserAward(tournament, groupTables) {
+  return getBiggestLoserRows(tournament, groupTables)[0] || null;
+}
+
+function getBiggestLoserRows(tournament, groupTables) {
+  return getParticipants(tournament)
+    .flatMap((participant) => {
+      const picks = getParticipantPicks(participant, tournament.teams);
+
+      return [picks.potA, picks.potB]
+        .filter(Boolean)
+        .map((team) => {
+          const stats = getTeamPrizeTableStats(team, groupTables, tournament.fixtures);
+
+          return {
+            participant,
+            team,
+            ...stats,
+          };
+        })
+        .filter((row) => row.played > 0);
+    })
+    .sort(
+      (a, b) =>
+        a.points - b.points ||
+        a.goalDifference - b.goalDifference ||
+        a.goalsFor - b.goalsFor ||
+        b.cards - a.cards ||
+        a.team.name.localeCompare(b.team.name)
+    );
+}
+
+function getTeamPrizeTableStats(team, groupTables, fixtures) {
+  const tableRow = groupTables[team.group]?.find((row) => row.id === team.id) || {};
+  const cardTotals = getTeamCardTotals(team.id, fixtures);
+
+  return {
+    played: tableRow.played || 0,
+    points: tableRow.points || 0,
+    goalDifference: tableRow.goalDifference || 0,
+    goalsFor: tableRow.goalsFor || 0,
+    cards: cardTotals.yellows + cardTotals.reds * 2,
+  };
 }
 
 function isTeamStillRelevantForPrize(team, prizeId, groupTables, allGroupMatchesCompleted) {

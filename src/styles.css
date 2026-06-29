@@ -335,6 +335,14 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
+.prize-icon-chip-awarded {
+  background: rgba(251, 191, 36, 0.18);
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.72),
+    0 0 24px rgba(251, 191, 36, 0.44),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
 .prize-icon-chip:hover .prize-icon {
   transform: translateY(-1px);
 }
@@ -342,6 +350,16 @@ body {
 .prize-icon-inactive {
   filter: grayscale(1) brightness(0.32) contrast(1.18);
   opacity: 0.52;
+}
+
+.prize-icon-awarded {
+  filter: none;
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px rgba(254, 243, 199, 0.98),
+    0 0 0 6px rgba(251, 191, 36, 0.46),
+    0 0 32px rgba(251, 191, 36, 0.72),
+    0 12px 26px rgba(0, 0, 0, 0.3);
 }
 
 .score-input {
