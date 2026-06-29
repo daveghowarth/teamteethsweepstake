@@ -3057,22 +3057,30 @@ async function saveLiveTournamentData(tournament) {
 
 function getTodayOrNextMatchDay(fixtures) {
   const today = getLocalDateKey(new Date());
-  const todaysMatches = fixtures.filter((fixture) => fixture.date === today);
+  const todaysMatches = fixtures
+    .filter((fixture) => fixture.date === today)
+    .sort(sortFixturesByDateAndKickoff);
   const nextFixture = fixtures
     .filter((fixture) => fixture.date > today)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort(sortFixturesByDateAndKickoff)
     [0];
 
   const nextDate = nextFixture?.date || null;
 
   return {
     today,
-    todaysFixtures: todaysMatches.slice(0, 2),
+    todaysFixtures: todaysMatches,
     nextDate,
     nextFixtures: nextDate
-      ? fixtures.filter((fixture) => fixture.date === nextDate).slice(0, 2)
+      ? fixtures.filter((fixture) => fixture.date === nextDate).sort(sortFixturesByDateAndKickoff)
       : [],
   };
+}
+
+function sortFixturesByDateAndKickoff(fixtureA, fixtureB) {
+  return `${fixtureA.date || ""} ${fixtureA.kickoffUk || ""}`.localeCompare(
+    `${fixtureB.date || ""} ${fixtureB.kickoffUk || ""}`
+  );
 }
 
 function getLocalDateKey(date) {
