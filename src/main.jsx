@@ -3996,6 +3996,21 @@ function getPrizeEligibility(participant, tournament, groupTables) {
       };
     }
 
+    if (rule.id === "winner" || rule.id === "runner-up") {
+      const activeTeams = pickedTeams.filter((team) =>
+        isTeamStillAliveInTournament(team, tournament, groupTables)
+      );
+
+      return {
+        id: rule.id,
+        name: rule.name,
+        status:
+          activeTeams.length > 0
+            ? `Still eligible via ${activeTeams.map((team) => team.name).join(" or ")}`
+            : "Picked teams have been eliminated",
+      };
+    }
+
     if (rule.id === "best-pot-b") {
       const potBTeam = picks.potB;
       const isStillAlive = isTeamStillAliveInTournament(potBTeam, tournament, groupTables);
