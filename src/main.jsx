@@ -3971,12 +3971,22 @@ function getPrizeEligibility(participant, tournament, groupTables) {
 
   return prizeRules.map((rule) => {
     if (rule.id === "master-of-chaos" || rule.id === "dirtiest-player") {
+      const allPickedTeamsEliminated =
+        pickedTeams.length > 0 &&
+        pickedTeams.every((team) => !isTeamStillAliveInTournament(team, tournament, groupTables));
+      const isCurrentLeader = isParticipantLeadingAccumulatorPrize(rule.id, participant, tournament);
+
       return {
         id: rule.id,
         name: rule.name,
-        status: pickedTeams.length
-          ? "Still eligible via combined Pot A and Pot B totals"
-          : "Not currently eligible",
+        status:
+          pickedTeams.length === 0
+            ? "Not currently eligible"
+            : allPickedTeamsEliminated && !isCurrentLeader
+              ? "Both teams have been eliminated and cannot catch the leaders"
+              : isCurrentLeader
+                ? "Still eligible - currently leading"
+                : "Still eligible via combined Pot A and Pot B totals",
       };
     }
 
@@ -4086,6 +4096,17 @@ function getTeamPrizeTableStats(team, groupTables, fixtures) {
   };
 }
 
+function isParticipantLeadingAccumulatorPrize(prizeId, participant, tournament) {
+  const rows = prizeId === "master-of-chaos"
+    ? getMasterOfChaosRows(tournament)
+    : getDirtiestPlayerRows(tournament);
+  const scoreKey = prizeId === "master-of-chaos" ? "totalChaos" : "totalPoints";
+  const topScore = rows[0]?.[scoreKey];
+  const participantRow = rows.find((row) => row.participantId === participant.id);
+
+  return topScore !== undefined && participantRow?.[scoreKey] === topScore;
+}
+
 function isTeamStillRelevantForPrize(team, prizeId, groupTables, allGroupMatchesCompleted) {
   if (!team) return false;
 
@@ -4111,9 +4132,7 @@ function isTeamStillAliveInTournament(team, tournament, groupTables) {
   if (!team?.id) return false;
 
   const fixtures = Array.isArray(tournament.fixtures) ? tournament.fixtures : [];
-  const teamFixtures = fixtures.filter(
-    (fixture) => fixture.homeTeamId === team.id || fixture.awayTeamId === team.id
-  );
+  const teamFixtures = fixtures.filter((fixture) => doesFixtureIncludeTeam(fixture, team));
 
   if (teamFixtures.some((fixture) => !isFixtureComplete(fixture))) return true;
 
@@ -4123,7 +4142,7 @@ function isTeamStillAliveInTournament(team, tournament, groupTables) {
 
   if (completedKnockoutFixtures.length > 0) {
     const latestKnockoutFixture = completedKnockoutFixtures[completedKnockoutFixtures.length - 1];
-    return getFixtureWinnerTeamId(latestKnockoutFixture) === team.id;
+    return isTeamWinnerOfFixture(latestKnockoutFixture, team);
   }
 
   const allGroupMatchesCompleted = fixtures
@@ -4133,6 +4152,34 @@ function isTeamStillAliveInTournament(team, tournament, groupTables) {
   if (!allGroupMatchesCompleted) return true;
 
   return getQualifiedTeams(groupTables).some((qualifiedTeam) => qualifiedTeam.id === team.id);
+}
+
+function doesFixtureIncludeTeam(fixture, team) {
+  return getFixtureSideForTeam(fixture, team) !== null;
+}
+
+function getFixtureSideForTeam(fixture, team) {
+  const teamKeys = new Set(getTeamIdentityKeys(team, team.id, team.name));
+  const homeKeys = getTeamIdentityKeys(fixture.homeTeam, fixture.homeTeamId, fixture.homeTeamName);
+  const awayKeys = getTeamIdentityKeys(fixture.awayTeam, fixture.awayTeamId, fixture.awayTeamName);
+
+  if (homeKeys.some((key) => teamKeys.has(key))) return "home";
+  if (awayKeys.some((key) => teamKeys.has(key))) return "away";
+  return null;
+}
+
+function isTeamWinnerOfFixture(fixture, team) {
+  if (!isFixtureComplete(fixture)) return false;
+
+  const side = getFixtureSideForTeam(fixture, team);
+  const homeScore = Number(fixture.homeScore);
+  const awayScore = Number(fixture.awayScore);
+
+  if (!side || Number.isNaN(homeScore) || Number.isNaN(awayScore) || homeScore === awayScore) {
+    return false;
+  }
+
+  return side === "home" ? homeScore > awayScore : awayScore > homeScore;
 }
 
 function isFixtureComplete(fixture) {
@@ -4164,6 +4211,8 @@ function getMasterOfChaosRows(tournament) {
       const potBPenalties = getTeamMatchPenaltyTotal(picks.potB?.id, tournament.fixtures);
 
       return {
+        participantId: participant.id,
+        participant,
         player: participant.name,
         potAGoals,
         potAPenalties,
@@ -4185,6 +4234,8 @@ function getDirtiestPlayerRows(tournament) {
         pot1Cards.yellows + pot2Cards.yellows + (pot1Cards.reds + pot2Cards.reds) * 2;
 
       return {
+        participantId: participant.id,
+        participant,
         player: participant.name,
         pot1Yellows: pot1Cards.yellows,
         pot1Reds: pot1Cards.reds,
