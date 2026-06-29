@@ -472,8 +472,8 @@ function Dashboard({ tournament, groupTables, stats }) {
     <div className="space-y-6">
       <TodaysMatchesCard matchDay={matchDay} />
 
+      <KnockoutBracket fixtures={getFixturesByStage(hydratedFixtures, "knockout")} />
       <GroupTables groupTables={groupTables} />
-      <KnockoutBracket fixtures={getFixturesByStage(tournament.fixtures, "knockout")} />
     </div>
   );
 }
@@ -2236,33 +2236,251 @@ function GroupTables({ groupTables }) {
 }
 
 function KnockoutBracket({ fixtures }) {
-  const stages = ["Round of 32", "Round of 16", "Quarter-final", "Semi-final", "Third-place play-off", "Final"];
+  const bracket = buildKnockoutBracketLayout(fixtures);
 
   return (
     <Panel title="Knockout stage">
-      <div className="bracket-scroll overflow-x-auto pb-2">
-        <div className="grid min-w-[980px] grid-cols-6 gap-4">
-        {stages.map((stage) => (
-          <div key={stage} className="bracket-column rounded-lg border border-white/12 bg-slate-950/45 p-4">
-            <h3 className="font-black text-cyan-200">{stage}</h3>
-            <div className="mt-3 space-y-2">
-              {fixtures
-                .filter((fixture) => fixture.stage === stage)
-                .slice(0, stage === "Round of 32" ? 8 : 4)
-                .map((fixture) => (
-                  <div key={fixture.id} className="bracket-match rounded border border-white/10 bg-white/8 p-2 text-xs">
-                    <TeamName team={fixture.homeTeam} name={fixture.homeTeamName} />
-                    <div className="my-1 text-center text-[10px] font-bold uppercase text-cyan-100/45">vs</div>
-                    <TeamName team={fixture.awayTeam} name={fixture.awayTeamName} />
-                  </div>
-                ))}
+      <div className="bracket-scroll overflow-x-auto pb-3">
+        <div
+          className="relative min-w-[1680px]"
+          style={{ height: `${bracket.height}px` }}
+        >
+          {bracket.connectors.map((connector) => (
+            <div key={connector.key} className="pointer-events-none absolute" style={{ left: connector.left, top: 0 }}>
+              <div
+                className="absolute border-r border-cyan-100/22"
+                style={{
+                  height: connector.height,
+                  top: connector.top,
+                  width: 1,
+                }}
+              />
+              <div
+                className="absolute border-t border-cyan-100/22"
+                style={{
+                  left: -connector.horizontal,
+                  top: connector.sourceATop,
+                  width: connector.horizontal,
+                }}
+              />
+              <div
+                className="absolute border-t border-cyan-100/22"
+                style={{
+                  left: -connector.horizontal,
+                  top: connector.sourceBTop,
+                  width: connector.horizontal,
+                }}
+              />
+              <div
+                className="absolute border-t border-cyan-100/22"
+                style={{
+                  top: connector.targetTop,
+                  width: connector.horizontal,
+                }}
+              />
             </div>
-          </div>
-        ))}
+          ))}
+
+          {bracket.columns.map((column) => (
+            <div
+              key={column.stage}
+              className="absolute top-0"
+              style={{ left: column.x, width: bracket.cardWidth }}
+            >
+              <h3 className="mb-4 rounded-lg bg-cyan-300 px-3 py-2 text-sm font-black uppercase tracking-wide text-slate-950">
+                {column.label}
+              </h3>
+              {column.items.map((item) => (
+                <KnockoutMatchCard
+                  key={item.fixture.id}
+                  fixture={item.fixture}
+                  style={{ top: item.y }}
+                />
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </Panel>
   );
+}
+
+function KnockoutMatchCard({ fixture, style }) {
+  const played = fixture.homeScore !== null && fixture.awayScore !== null;
+
+  return (
+    <article
+      className="absolute w-full rounded-lg border border-white/12 bg-slate-950/70 p-3 shadow-soft backdrop-blur-xl"
+      style={style}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-wide text-cyan-200">
+          {formatShortDate(fixture.date)} · {getKickoffUk(fixture)} UK
+        </p>
+        <p className="shrink-0 text-xs font-black uppercase text-white/50">Match {fixture.matchNumber}</p>
+      </div>
+      <KnockoutTeamLine
+        team={fixture.homeTeam}
+        name={fixture.homeTeamName}
+        score={played ? fixture.homeScore : null}
+      />
+      <KnockoutTeamLine
+        team={fixture.awayTeam}
+        name={fixture.awayTeamName}
+        score={played ? fixture.awayScore : null}
+      />
+      {fixture.venue && <p className="mt-2 truncate text-[11px] font-semibold text-white/38">{fixture.venue}</p>}
+    </article>
+  );
+}
+
+function KnockoutTeamLine({ team, name, score }) {
+  const displayTeam = team || getTeamFallback(name);
+  const hasKnownTeam = Boolean(team?.id);
+
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 py-1">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          {hasKnownTeam ? (
+            <TeamBadge team={displayTeam} fallbackFlag={displayTeam.flagEmoji || getPlaceholderFlag(displayTeam.id)} />
+          ) : (
+            <Shield size={18} className="shrink-0 text-white/45" />
+          )}
+          <span className="truncate text-sm font-black text-white">{displayTeam.name || name}</span>
+        </div>
+        <p className="ml-8 truncate text-[11px] font-bold text-cyan-100/52">
+          {hasKnownTeam ? displayTeam.sweepstakeOwner || "Not drawn yet" : "Winner TBC"}
+        </p>
+      </div>
+      <span className="w-7 text-right text-xl font-black text-white">
+        {score === null || score === undefined ? "" : score}
+      </span>
+    </div>
+  );
+}
+
+function buildKnockoutBracketLayout(fixtures) {
+  const cardWidth = 270;
+  const cardHeight = 130;
+  const columnGap = 58;
+  const firstRoundGap = 28;
+  const stageDefinitions = [
+    ["Round of 32", "Round of 32"],
+    ["Round of 16", "Round of 16"],
+    ["Quarter-final", "Quarter-finals"],
+    ["Semi-final", "Semi-finals"],
+    ["Final", "Final"],
+  ];
+  const positioned = new Map();
+
+  const columns = stageDefinitions.map(([stage, label], columnIndex) => {
+    const stageFixtures = fixtures
+      .filter((fixture) => fixture.stage === stage)
+      .sort((a, b) => Number(a.matchNumber) - Number(b.matchNumber));
+    const x = columnIndex * (cardWidth + columnGap);
+    const items = stageFixtures.map((fixture, index) => {
+      const sourceNumbers = getKnockoutSourceMatchNumbers(fixture);
+      const sourcePositions = sourceNumbers
+        .map((number) => positioned.get(number))
+        .filter(Boolean);
+      const y =
+        sourcePositions.length >= 2
+          ? average(sourcePositions.map((position) => position.centerY)) - cardHeight / 2
+          : index * (cardHeight + firstRoundGap);
+
+      positioned.set(Number(fixture.matchNumber), {
+        x,
+        y,
+        centerY: y + cardHeight / 2,
+        fixture,
+      });
+
+      return { fixture, y };
+    });
+
+    return { stage, label, x, items };
+  });
+
+  const thirdPlaceFixture = fixtures.find((fixture) => fixture.stage === "Third-place play-off");
+  if (thirdPlaceFixture) {
+    const finalColumn = columns.at(-1);
+    const y = Math.max(
+      ...finalColumn.items.map((item) => item.y + cardHeight + 28),
+      0
+    );
+    finalColumn.items.push({ fixture: thirdPlaceFixture, y });
+    positioned.set(Number(thirdPlaceFixture.matchNumber), {
+      x: finalColumn.x,
+      y,
+      centerY: y + cardHeight / 2,
+      fixture: thirdPlaceFixture,
+    });
+  }
+
+  const connectors = [];
+  for (const [matchNumber, position] of positioned.entries()) {
+    const sources = getKnockoutSourceMatchNumbers(position.fixture)
+      .map((number) => positioned.get(number))
+      .filter(Boolean);
+
+    if (sources.length < 2) continue;
+
+    const sourceCenters = sources.map((source) => source.centerY).sort((a, b) => a - b);
+    const horizontal = columnGap / 2;
+    connectors.push({
+      key: `connector-${matchNumber}`,
+      left: position.x - horizontal,
+      horizontal,
+      top: sourceCenters[0],
+      height: sourceCenters[1] - sourceCenters[0],
+      sourceATop: sourceCenters[0],
+      sourceBTop: sourceCenters[1],
+      targetTop: position.centerY,
+    });
+  }
+
+  const height = Math.max(
+    ...columns.flatMap((column) => column.items.map((item) => item.y + cardHeight)),
+    720
+  ) + 24;
+
+  return { columns, connectors, cardWidth, height };
+}
+
+function getKnockoutSourceMatchNumbers(fixture) {
+  const placeholderSources = [fixture.homeTeamName, fixture.awayTeamName]
+    .map((name) => String(name || "").match(/^[WL](\d+)$/i)?.[1])
+    .filter(Boolean)
+    .map(Number);
+
+  if (placeholderSources.length) return placeholderSources;
+
+  const sourceMap = {
+    89: [74, 77],
+    90: [74, 78],
+    91: [75, 77],
+    92: [79, 81],
+    93: [80, 82],
+    94: [83, 84],
+    95: [85, 88],
+    96: [86, 87],
+    97: [89, 90],
+    98: [91, 92],
+    99: [93, 94],
+    100: [95, 96],
+    101: [97, 98],
+    102: [99, 100],
+    103: [101, 102],
+    104: [101, 102],
+  };
+
+  return sourceMap[Number(fixture.matchNumber)] || [];
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function FixtureGrid({ fixtures, compact = false }) {
