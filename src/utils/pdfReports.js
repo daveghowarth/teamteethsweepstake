@@ -353,13 +353,13 @@ async function drawFixturesReport(context, tournament, helpers, options = {}) {
     return;
   }
 
-  const cardWidth = featured ? 770 : 386;
-  const cardHeight = featured ? 202 : 132;
+  const cardWidth = featured ? 800 : 386;
+  const cardHeight = featured ? 250 : 132;
   const columnCount = featured ? 2 : 4;
-  const startX = 72;
-  const startY = featured ? 294 : 274;
-  const gapX = featured ? 70 : 28;
-  const gapY = featured ? 42 : 24;
+  const startX = featured ? 52 : 72;
+  const startY = featured ? 276 : 274;
+  const gapX = featured ? 50 : 28;
+  const gapY = featured ? 46 : 24;
 
   for (let index = 0; index < fixtures.length; index += 1) {
     const fixture = fixtures[index];
@@ -388,17 +388,24 @@ async function drawFixturesReport(context, tournament, helpers, options = {}) {
 async function drawFeaturedFixtureCard(context, helpers, fixture, x, y, width, height) {
   drawPanel(context, x, y, width, height, 18);
   context.fillStyle = "rgba(103,232,249,0.12)";
-  roundRect(context, x + 18, y + 18, width - 36, 40, 12, true);
+  roundRect(context, x + 18, y + 18, width - 36, 44, 12, true);
 
-  drawText(context, `${formatShortDate(fixture.date)} · ${fixture.kickoffUk || "Time TBC"} UK`, x + 34, y + 45, 360, "900 22px Inter, Arial, sans-serif", "#67e8f9");
-  drawText(context, getFixtureLabel(fixture), x + width - 220, y + 45, 180, "900 18px Inter, Arial, sans-serif", "rgba(255,255,255,0.68)");
+  drawText(context, `${formatShortDate(fixture.date)} · ${fixture.kickoffUk || "Time TBC"} UK`, x + 34, y + 48, 390, "900 24px Inter, Arial, sans-serif", "#67e8f9");
+  drawText(context, getFixtureLabel(fixture), x + width - 236, y + 48, 196, "900 19px Inter, Arial, sans-serif", "rgba(255,255,255,0.68)");
 
-  await drawFixtureTeamLine(context, helpers, fixture.homeTeam, fixture.homeTeamName, x + 34, y + 104, width - 150);
-  await drawFixtureTeamLine(context, helpers, fixture.awayTeam, fixture.awayTeamName, x + 34, y + 158, width - 150);
+  await drawFeaturedFixtureTeamLine(context, helpers, fixture.homeTeam, fixture.homeTeamName, x + 34, y + 126, width - 150);
+  await drawFeaturedFixtureTeamLine(context, helpers, fixture.awayTeam, fixture.awayTeamName, x + 34, y + 198, width - 150);
 
   context.fillStyle = "#67e8f9";
-  context.font = "900 34px Inter, Arial, sans-serif";
-  context.fillText("v", x + width - 76, y + 138);
+  context.font = "900 42px Inter, Arial, sans-serif";
+  context.fillText("v", x + width - 82, y + 165);
+}
+
+async function drawFeaturedFixtureTeamLine(context, helpers, team, name, x, y, maxWidth) {
+  await helpers.drawAvatar({ avatarUrl: team?.sweepstakeOwnerAvatarUrl, name: team?.sweepstakeOwner }, x, y - 50, 54);
+  await helpers.drawFlag(team, x + 42, y - 17, 26);
+  drawText(context, name, x + 78, y - 14, maxWidth - 80, "900 28px Inter, Arial, sans-serif", "#ffffff");
+  drawText(context, team?.sweepstakeOwner || "Not drawn yet", x + 78, y + 15, maxWidth - 80, "800 17px Inter, Arial, sans-serif", "rgba(207,250,254,0.76)");
 }
 
 async function drawFixtureTeamLine(context, helpers, team, name, x, y, maxWidth) {
