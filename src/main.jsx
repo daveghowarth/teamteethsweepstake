@@ -3502,6 +3502,22 @@ function PdfReportsPanel({ tournament }) {
     }
   }
 
+  async function downloadQuarterFinalMatchesImage() {
+    setActiveReport("quarter-final-matches-jpg");
+
+    try {
+      await generateEmailJpegReport(tournament, "quarter-final-matches");
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "That quarter final image could not be created. Please try again."
+      );
+    } finally {
+      setActiveReport(null);
+    }
+  }
+
   return (
     <Panel title="Downloadable reports">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -3535,6 +3551,30 @@ function PdfReportsPanel({ tournament }) {
       <p className="mt-3 text-sm leading-6 text-white/55">
         PDFs are A3 landscape. Email JPEGs are lower-resolution landscape images, sized to sit neatly inside an email body.
       </p>
+      <div className="mt-6 border-t border-white/10 pt-5">
+        <h3 className="font-black text-white">Matchday images</h3>
+        <p className="mt-1 text-sm leading-6 text-white/55">
+          Download a polished JPEG for the next four fixtures.
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="glass-card rounded-lg p-4">
+            <span className="block text-sm font-black text-cyan-200">
+              {activeReport === "quarter-final-matches-jpg" ? "Preparing image..." : "Quarter Final Matches"}
+            </span>
+            <span className="mt-2 block text-sm leading-5 text-white/62">
+              Email-friendly JPEG showing the next four matches with player photos and flags.
+            </span>
+            <button
+              type="button"
+              onClick={downloadQuarterFinalMatchesImage}
+              disabled={activeReport !== null}
+              className="mt-4 rounded-lg bg-cyan-300 px-3 py-2 text-xs font-black text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+            >
+              Download JPEG
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="mt-6 border-t border-white/10 pt-5">
         <h3 className="font-black text-white">Prize top 5 images</h3>
         <p className="mt-1 text-sm leading-6 text-white/55">
