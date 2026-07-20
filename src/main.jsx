@@ -466,15 +466,70 @@ function Dashboard({ tournament, groupTables, stats }) {
   const hydratedFixtures = tournament.fixtures.map((fixture) =>
     hydrateFixtureTeams(fixture, tournament.teams)
   );
-  const matchDay = getTodayOrNextMatchDay(hydratedFixtures);
 
   return (
     <div className="space-y-6">
-      <TodaysMatchesCard matchDay={matchDay} />
+      <WinnersShowcase tournament={tournament} groupTables={groupTables} />
 
       <KnockoutBracket fixtures={getFixturesByStage(hydratedFixtures, "knockout")} />
       <GroupTables groupTables={groupTables} />
     </div>
+  );
+}
+
+function WinnersShowcase({ tournament, groupTables }) {
+  const prizeRules = getPrizeRules(tournament);
+  const awards = prizeRules.map((rule) => ({
+    rule,
+    award: getPrizeAward(rule.id, tournament, groupTables),
+  }));
+
+  return (
+    <section className="winners-showcase overflow-hidden rounded-lg border border-amber-300/28 bg-slate-950/76 p-5 shadow-soft backdrop-blur-xl sm:p-6">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-black uppercase tracking-wide text-amber-200">Tournament complete</p>
+          <h2 className="mt-1 text-3xl font-black text-white sm:text-4xl">Sweepstake winners</h2>
+        </div>
+        <Trophy className="text-amber-200" size={42} aria-hidden="true" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {awards.map(({ rule, award }) => (
+          <WinnerShowcaseCard key={rule.id} rule={rule} award={award} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WinnerShowcaseCard({ rule, award }) {
+  return (
+    <article className="winner-card rounded-lg border border-white/12 bg-white/10 p-4">
+      <div className="flex items-start gap-3">
+        <PrizeIcon prizeId={rule.id} label={rule.name} awarded={Boolean(award)} />
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-wide text-cyan-100/70">{rule.prize}</p>
+          <h3 className="text-lg font-black text-white">{rule.name.replace(/^Prize \d+:\s*/, "")}</h3>
+        </div>
+      </div>
+
+      {award ? (
+        <div className="mt-4">
+          <div className="flex items-center gap-3">
+            <PlayerAvatar participant={award.participant} size="hero" />
+            <div className="min-w-0">
+              <p className="text-xl font-black text-white">{getParticipantDisplayName(award.participant)}</p>
+              <p className="text-sm font-bold text-amber-100/75">Winner</p>
+            </div>
+          </div>
+          <AwardTeamsSummary award={award} compact={false} />
+        </div>
+      ) : (
+        <div className="mt-4 rounded-lg border border-dashed border-white/16 bg-white/8 p-3 text-sm font-bold text-white/60">
+          Awaiting final result
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -680,9 +735,7 @@ function PrizeRuleCard({ rule, tournament, onOpenTable }) {
       ? "View league table"
       : "View criteria";
   const groupTables = React.useMemo(() => calculateGroupTables(tournament), [tournament]);
-  const award = rule.id === "biggest-loser"
-    ? getBiggestLoserAward(tournament, groupTables)
-    : null;
+  const award = getPrizeAward(rule.id, tournament, groupTables);
 
   return (
     <article className="glass-card rounded-lg p-5 shadow-sm transition hover:-translate-y-1 hover:bg-white/12">
@@ -719,14 +772,62 @@ function PrizeAwardPanel({ award }) {
         <PlayerAvatar participant={award.participant} />
         <div className="min-w-0">
           <p className="font-black text-white">{getParticipantDisplayName(award.participant)}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm font-bold text-white/70">
-            <TeamBadge team={award.team} fallbackFlag={award.team?.flagEmoji || getPlaceholderFlag(award.team?.id)} />
-            <span>{award.team?.name || "Team TBC"}</span>
-          </p>
         </div>
       </div>
+      <AwardTeamsSummary award={award} compact />
     </div>
   );
+}
+
+function AwardTeamsSummary({ award, compact = true }) {
+  if (!award?.teams?.length) return null;
+
+  return (
+    <div className={`mt-3 grid gap-2 ${award.teams.length > 1 ? "sm:grid-cols-2" : ""}`}>
+      {award.teams.map((entry) => (
+        <div
+          key={`${award.id}-${entry.label}-${entry.team?.id || entry.team?.name}`}
+          className={`rounded-lg border border-white/12 bg-slate-950/35 ${compact ? "p-2" : "p-3"}`}
+        >
+          <div className="flex items-center gap-2">
+            <TeamBadge team={entry.team} fallbackFlag={entry.team?.flagEmoji || getPlaceholderFlag(entry.team?.id)} />
+            <div className="min-w-0">
+              <p className={`${compact ? "text-sm" : "text-base"} font-black text-white`}>{entry.team?.name || "Team TBC"}</p>
+              {entry.label && <p className="text-xs font-bold text-cyan-100/62">{entry.label}</p>}
+            </div>
+          </div>
+          {entry.metrics?.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {entry.metrics.map((metric) => (
+                <span
+                  key={`${entry.team?.id}-${metric.label}`}
+                  className="inline-flex items-center gap-1 rounded bg-white/10 px-2 py-1 text-xs font-black text-white/78"
+                >
+                  {metric.icon && <MetricIcon icon={metric.icon} />}
+                  {metric.label}: {metric.value}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MetricIcon({ icon }) {
+  if (icon === "Y" || icon === "R") {
+    return (
+      <span
+        className={`inline-block h-4 w-2.5 rounded-[2px] ${
+          icon === "Y" ? "bg-yellow-300" : "bg-red-500"
+        }`}
+        aria-hidden="true"
+      />
+    );
+  }
+
+  return <span aria-hidden="true">{icon}</span>;
 }
 
 function PrizeIcon({ prizeId, label, size = "large", active = true, awarded = false }) {
@@ -997,7 +1098,8 @@ function ParticipantButton({ participant, tournament, groupTables, onClick }) {
 
 function PlayerAvatar({ participant, size = "normal" }) {
   const initials = getInitials(getParticipantDisplayName(participant));
-  const sizeClass = size === "large" ? "player-avatar-large" : "player-avatar";
+  const sizeClass =
+    size === "hero" ? "player-avatar-hero" : size === "large" ? "player-avatar-large" : "player-avatar";
 
   if (participant.avatarUrl) {
     return (
@@ -4001,6 +4103,101 @@ function isPrizeAwarded(prize) {
   return Boolean(prize.awarded);
 }
 
+function getPrizeAward(prizeId, tournament, groupTables) {
+  if (prizeId === "winner" || prizeId === "runner-up") {
+    return getFinalPrizeAward(prizeId, tournament);
+  }
+
+  if (prizeId === "best-pot-b") {
+    return getBestPotBAward(tournament, groupTables);
+  }
+
+  if (prizeId === "biggest-loser") {
+    return getBiggestLoserAward(tournament, groupTables);
+  }
+
+  if (prizeId === "master-of-chaos") {
+    const row = getMasterOfChaosRows(tournament)[0];
+    if (!row) return null;
+
+    return {
+      id: prizeId,
+      participant: row.participant,
+      teams: [
+        {
+          label: "Pot A",
+          team: row.potATeam,
+          metrics: [
+            { label: "Goals", value: row.potAGoals },
+            { label: "Pens", value: row.potAPenalties },
+          ],
+        },
+        {
+          label: "Pot B",
+          team: row.potBTeam,
+          metrics: [
+            { label: "Goals", value: row.potBGoals },
+            { label: "Pens", value: row.potBPenalties },
+          ],
+        },
+      ],
+      total: row.totalChaos,
+    };
+  }
+
+  if (prizeId === "dirtiest-player") {
+    const row = getDirtiestPlayerRows(tournament)[0];
+    if (!row) return null;
+
+    return {
+      id: prizeId,
+      participant: row.participant,
+      teams: [
+        {
+          label: "Pot A",
+          team: row.potATeam,
+          metrics: [
+            { label: "Yellows", value: row.pot1Yellows, icon: "Y" },
+            { label: "Reds", value: row.pot1Reds, icon: "R" },
+          ],
+        },
+        {
+          label: "Pot B",
+          team: row.potBTeam,
+          metrics: [
+            { label: "Yellows", value: row.pot2Yellows, icon: "Y" },
+            { label: "Reds", value: row.pot2Reds, icon: "R" },
+          ],
+        },
+      ],
+      total: row.totalPoints,
+    };
+  }
+
+  return null;
+}
+
+function getFinalPrizeAward(prizeId, tournament) {
+  const finalFixture = (tournament.fixtures || []).find(
+    (fixture) => fixture.stage === "Final" && isFixtureComplete(fixture)
+  );
+  if (!finalFixture) return null;
+
+  const winningSide = getFixtureWinningSide(finalFixture);
+  if (!winningSide) return null;
+
+  const side = prizeId === "winner" ? winningSide : winningSide === "home" ? "away" : "home";
+  const team = getFixtureTeamBySide(finalFixture, tournament.teams, side);
+  if (!team) return null;
+
+  return createSingleTeamAward(prizeId, tournament, team, prizeId === "winner" ? "World Cup winner" : "Runner-up");
+}
+
+function getBestPotBAward(tournament, groupTables) {
+  const row = getBestPotBRows(tournament, groupTables)[0];
+  return row ? createSingleTeamAward("best-pot-b", tournament, row.team, row.roundReached) : null;
+}
+
 function getPrizeEligibility(participant, tournament, groupTables) {
   const prizeRules = getPrizeRules(tournament);
   const picks = getParticipantPicks(participant, tournament.teams);
@@ -4092,7 +4289,8 @@ function getPrizeEligibility(participant, tournament, groupTables) {
 }
 
 function getBiggestLoserAward(tournament, groupTables) {
-  return getBiggestLoserRows(tournament, groupTables)[0] || null;
+  const row = getBiggestLoserRows(tournament, groupTables)[0];
+  return row ? createSingleTeamAward("biggest-loser", tournament, row.team, "Biggest loser") : null;
 }
 
 function getBiggestLoserRows(tournament, groupTables) {
@@ -4123,6 +4321,63 @@ function getBiggestLoserRows(tournament, groupTables) {
     );
 }
 
+function getBestPotBRows(tournament, groupTables) {
+  return getParticipants(tournament)
+    .map((participant) => {
+      const picks = getParticipantPicks(participant, tournament.teams);
+      if (!picks.potB) return null;
+
+      const stats = getTeamPrizeTableStats(picks.potB, groupTables, tournament.fixtures);
+      const round = getTeamFurthestRound(picks.potB, tournament.fixtures);
+
+      return {
+        participant,
+        team: picks.potB,
+        roundReached: round.label,
+        roundRank: round.rank,
+        ...stats,
+      };
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        b.roundRank - a.roundRank ||
+        b.points - a.points ||
+        b.goalDifference - a.goalDifference ||
+        b.goalsFor - a.goalsFor ||
+        a.team.name.localeCompare(b.team.name)
+    );
+}
+
+function createSingleTeamAward(prizeId, tournament, team, label) {
+  const participant = getParticipantForTeam(tournament, team);
+
+  return {
+    id: prizeId,
+    participant,
+    team,
+    teams: [
+      {
+        label,
+        team,
+      },
+    ],
+  };
+}
+
+function getParticipantForTeam(tournament, team) {
+  const participant = getParticipants(tournament).find((candidate) => {
+    const picks = getParticipantPicks(candidate, tournament.teams);
+    return [picks.potA, picks.potB].some((pick) => pick?.id === team?.id);
+  });
+
+  return participant || {
+    id: `undrawn-${team?.id || "team"}`,
+    name: team?.sweepstakeOwner || "Not drawn yet",
+    avatarUrl: team?.sweepstakeOwnerAvatarUrl || "",
+  };
+}
+
 function getTeamPrizeTableStats(team, groupTables, fixtures) {
   const tableRow = groupTables[team.group]?.find((row) => row.id === team.id) || {};
   const cardTotals = getTeamCardTotals(team.id, fixtures);
@@ -4134,6 +4389,29 @@ function getTeamPrizeTableStats(team, groupTables, fixtures) {
     goalsFor: tableRow.goalsFor || 0,
     cards: cardTotals.yellows + cardTotals.reds * 2,
   };
+}
+
+function getTeamFurthestRound(team, fixtures) {
+  const stageRanks = {
+    Group: 1,
+    "Round of 32": 2,
+    "Round of 16": 3,
+    "Quarter-final": 4,
+    "Semi-final": 5,
+    "Third-place play-off": 6,
+    Final: 7,
+  };
+  let best = { label: "Group stage", rank: 1 };
+
+  for (const fixture of fixtures || []) {
+    if (!doesFixtureIncludeTeam(fixture, team)) continue;
+    const rank = stageRanks[fixture.stage] || 1;
+    if (rank > best.rank) {
+      best = { label: fixture.stage || "Group stage", rank };
+    }
+  }
+
+  return best;
 }
 
 function isParticipantLeadingAccumulatorPrize(prizeId, participant, tournament) {
@@ -4222,6 +4500,27 @@ function isTeamWinnerOfFixture(fixture, team) {
   return side === "home" ? homeScore > awayScore : awayScore > homeScore;
 }
 
+function getFixtureWinningSide(fixture) {
+  if (!isFixtureComplete(fixture)) return null;
+
+  const homeScore = Number(fixture.homeScore);
+  const awayScore = Number(fixture.awayScore);
+
+  if (Number.isNaN(homeScore) || Number.isNaN(awayScore) || homeScore === awayScore) return null;
+  return homeScore > awayScore ? "home" : "away";
+}
+
+function getFixtureTeamBySide(fixture, teams, side) {
+  const teamId = side === "home" ? fixture.homeTeamId : fixture.awayTeamId;
+  const teamName = side === "home" ? fixture.homeTeamName : fixture.awayTeamName;
+
+  return (
+    teams.find((team) => team.id === teamId) ||
+    teams.find((team) => getCanonicalTeamName(team.name) === getCanonicalTeamName(teamName)) ||
+    getTeamFallback(teamName)
+  );
+}
+
 function isFixtureComplete(fixture) {
   return (
     fixture.homeScore !== null &&
@@ -4254,6 +4553,8 @@ function getMasterOfChaosRows(tournament) {
         participantId: participant.id,
         participant,
         player: participant.name,
+        potATeam: picks.potA,
+        potBTeam: picks.potB,
         potAGoals,
         potAPenalties,
         potBGoals,
@@ -4277,6 +4578,8 @@ function getDirtiestPlayerRows(tournament) {
         participantId: participant.id,
         participant,
         player: participant.name,
+        potATeam: picks.potA,
+        potBTeam: picks.potB,
         pot1Yellows: pot1Cards.yellows,
         pot1Reds: pot1Cards.reds,
         pot2Yellows: pot2Cards.yellows,
